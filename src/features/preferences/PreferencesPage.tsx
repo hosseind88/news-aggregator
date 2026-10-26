@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { CATEGORIES, CATEGORY_LABELS, SOURCE_IDS, SOURCE_LABELS } from '@/domain/news';
+import { authorKey } from '@/services/normalize';
 import { useArticles } from '@/features/articles/hooks/useArticles';
 import { Button } from '@/shared/ui/Button';
 import { MultiSelect } from '@/shared/ui/MultiSelect';
@@ -20,7 +21,7 @@ export function PreferencesPage() {
   // Suggestions come from the latest articles (shares the cache with the home feed).
   const latest = useArticles({});
   const suggestions = collectAuthors(latest.articles).filter(
-    (name) => !authors.some((a) => a.toLowerCase() === name.toLowerCase()),
+    (name) => !authors.some((a) => authorKey(a) === authorKey(name)),
   );
 
   const submitAuthor = (event: FormEvent) => {

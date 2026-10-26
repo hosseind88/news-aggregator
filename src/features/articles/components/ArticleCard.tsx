@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Article } from '@/domain/news';
+import { CATEGORY_LABELS, type Article } from '@/domain/news';
 import { formatPublished } from '@/shared/lib/date';
 
 interface Props {
@@ -10,7 +10,17 @@ interface Props {
 
 export function ArticleCard({ article, followed = false }: Props) {
   const [imageFailed, setImageFailed] = useState(false);
-  const { title, description, url, imageUrl, author, sourceName, category, publishedAt } = article;
+  const {
+    title,
+    description,
+    url,
+    imageUrl,
+    authors,
+    sourceName,
+    publisher,
+    category,
+    publishedAt,
+  } = article;
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition focus-within:ring-2 focus-within:ring-blue-600 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
@@ -28,7 +38,8 @@ export function ArticleCard({ article, followed = false }: Props) {
           <span className="rounded bg-slate-100 px-2 py-0.5 text-slate-800 dark:bg-slate-800 dark:text-slate-200">
             {sourceName}
           </span>
-          {category && <span>{category}</span>}
+          {publisher && <span>{publisher}</span>}
+          {category && <span>{CATEGORY_LABELS[category]}</span>}
           {followed && (
             <span className="rounded bg-amber-100 px-2 py-0.5 text-amber-900 dark:bg-amber-900 dark:text-amber-100">
               Followed author
@@ -51,7 +62,7 @@ export function ArticleCard({ article, followed = false }: Props) {
           <p className="line-clamp-3 text-sm text-slate-700 dark:text-slate-300">{description}</p>
         )}
         <p className="mt-auto pt-2 text-xs text-slate-600 dark:text-slate-400">
-          {author && <span>By {author} · </span>}
+          {authors.length > 0 && <span>By {authors.join(', ')} · </span>}
           <time dateTime={publishedAt}>{formatPublished(publishedAt)}</time>
         </p>
       </div>

@@ -10,8 +10,13 @@ import { FeedPage } from './FeedPage';
 const setup = () => {
   const search = vi.fn<NewsService['search']>().mockResolvedValue({
     articles: [
-      makeArticle({ id: '1', title: 'Other story', url: 'https://x.com/1', author: 'Someone' }),
-      makeArticle({ id: '2', title: 'Followed story', url: 'https://x.com/2', author: 'Jane Doe' }),
+      makeArticle({ id: '1', title: 'Other story', url: 'https://x.com/1', authors: ['Someone'] }),
+      makeArticle({
+        id: '2',
+        title: 'Followed story',
+        url: 'https://x.com/2',
+        authors: ['Jane Doe'],
+      }),
     ],
     failures: [],
   });

@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { Article, Category, NewsProvider, SearchParams } from '@/domain/news';
 import type { HttpClient } from '@/services/http/httpClient';
-import { clean, hashId, parseItems, supportedCategoriesOf } from './shared';
+import { createArticle } from '@/services/normalize';
+import { parseItems, supportedCategoriesOf } from './shared';
 
 const PAGE_SIZE = 20;
 
@@ -28,18 +29,18 @@ type RawArticle = z.infer<typeof articleSchema>;
 
 const responseSchema = z.object({ status: z.string(), articles: z.array(z.unknown()).default([]) });
 
-export const mapNewsApiArticle = (raw: RawArticle, category?: string): Article => ({
-  id: hashId('newsapi', raw.url),
-  title: clean(raw.title) ?? raw.title,
-  description: clean(raw.description),
-  url: raw.url,
-  imageUrl: raw.urlToImage ?? undefined,
-  author: clean(raw.author),
-  source: 'newsapi',
-  sourceName: raw.source?.name ?? 'NewsAPI',
-  category,
-  publishedAt: raw.publishedAt,
-});
+export const mapNewsApiArticle = (raw: RawArticle, category?: Category): Article | undefined =>
+  createArticle({
+    source: 'newsapi',
+    title: raw.title,
+    description: raw.description,
+    url: raw.url,
+    imageUrl: raw.urlToImage,
+    author: raw.author,
+    publisher: raw.source?.name,
+    categories: [category],
+    publishedAt: raw.publishedAt,
+  });
 
 /**
  * NewsAPI has two endpoints with different capabilities:
@@ -84,10 +85,10 @@ export class NewsApiProvider implements NewsProvider {
     return (await Promise.all(requests)).flat();
   }
 
-  private map(payload: unknown, category?: string): Article[] {
+  private map(payload: unknown, category?: Category): Article[] {
     const { articles } = responseSchema.parse(payload);
-    return parseItems(articleSchema, articles)
-      .filter((item) => item.title !== '[Removed]')
-      .map((item) => mapNewsApiArticle(item, category));
+    return parseItems(articleSchema, articles).flatMap(
+      (item) => mapNewsApiArticle(item, category) ?? [],
+    );
   }
 }

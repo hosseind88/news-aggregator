@@ -15,16 +15,23 @@ describe('NewsApiProvider', () => {
     expect(articles).toHaveLength(2);
     expect(articles[0]).toMatchObject({
       title: 'Chip makers rally on AI demand',
-      description: 'Shares rose sharply.',
+      description: 'Shares & bonds rose sharply. Read more',
       url: 'https://www.bbc.co.uk/news/chips',
       imageUrl: 'https://img.example.com/chips.jpg',
-      author: 'Jane Reporter',
+      authors: ['Jane Reporter', "John O'Neil"],
       source: 'newsapi',
-      sourceName: 'BBC News',
-      publishedAt: '2024-05-02T08:30:00Z',
+      sourceName: 'NewsAPI',
+      publisher: 'BBC News',
+      category: undefined,
+      publishedAt: '2024-05-02T08:30:00.000Z',
     });
     expect(articles[0]?.id).toMatch(/^newsapi-/);
-    expect(articles[1]).toMatchObject({ sourceName: 'Wire', author: undefined });
+    expect(articles[1]).toMatchObject({
+      title: 'No image & no fuss',
+      publisher: 'Wire',
+      authors: [],
+      imageUrl: 'https://img.example.com/story.jpg?w=1',
+    });
   });
 
   it('uses top-headlines with keyword and category when no date range is given', async () => {

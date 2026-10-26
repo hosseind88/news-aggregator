@@ -116,4 +116,27 @@ describe('NewsAggregator', () => {
     expect(business).not.toHaveBeenCalled();
     expect(sports).toHaveBeenCalled();
   });
+
+  it('enforces the date range on normalised timestamps', async () => {
+    const aggregator = new NewsAggregator([
+      makeProvider({
+        id: 'newsapi',
+        search: async () => [
+          makeArticle({
+            title: 'In',
+            url: 'https://a.com/in',
+            publishedAt: '2024-05-03T23:30:00.000Z',
+          }),
+          makeArticle({
+            title: 'Out',
+            url: 'https://a.com/out',
+            publishedAt: '2024-05-04T00:30:00.000Z',
+          }),
+        ],
+      }),
+    ]);
+
+    const { articles } = await aggregator.search({ from: '2024-05-01', to: '2024-05-03' });
+    expect(articles.map((a) => a.title)).toEqual(['In']);
+  });
 });

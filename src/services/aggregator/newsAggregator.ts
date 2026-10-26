@@ -6,6 +6,7 @@ import type {
   SourceFailure,
   SourceId,
 } from '@/domain/news';
+import { isWithinDateRange } from '@/services/normalize';
 import { dedupeArticles, sortByNewest } from './dedupe';
 
 const errorMessage = (reason: unknown): string =>
@@ -45,7 +46,11 @@ export class NewsAggregator implements NewsService {
       return [];
     });
 
-    return { articles: sortByNewest(dedupeArticles(collected)), failures };
+    // Every source has its own idea of date bounds; enforce the range on normalised UTC timestamps.
+    const inRange = collected.filter((a) =>
+      isWithinDateRange(a.publishedAt, params.from, params.to),
+    );
+    return { articles: sortByNewest(dedupeArticles(inRange)), failures };
   }
 
   /** A provider with no overlap with the requested categories has nothing to offer. */

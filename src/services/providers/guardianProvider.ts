@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { Article, Category, NewsProvider, SearchParams } from '@/domain/news';
 import type { HttpClient } from '@/services/http/httpClient';
-import { clean, hashId, parseItems, supportedCategoriesOf } from './shared';
+import { createArticle } from '@/services/normalize';
+import { parseItems, supportedCategoriesOf } from './shared';
 
 const PAGE_SIZE = 20;
 
@@ -22,6 +23,7 @@ const resultSchema = z.object({
   webTitle: z.string().min(1),
   webUrl: z.string().url(),
   webPublicationDate: z.string(),
+  sectionId: z.string().nullish(),
   sectionName: z.string().nullish(),
   fields: z
     .object({
@@ -37,18 +39,17 @@ const responseSchema = z.object({
   response: z.object({ results: z.array(z.unknown()).default([]) }),
 });
 
-export const mapGuardianResult = (raw: RawResult): Article => ({
-  id: hashId('guardian', raw.id),
-  title: raw.webTitle,
-  description: clean(raw.fields?.trailText),
-  url: raw.webUrl,
-  imageUrl: raw.fields?.thumbnail ?? undefined,
-  author: clean(raw.fields?.byline),
-  source: 'guardian',
-  sourceName: 'The Guardian',
-  category: raw.sectionName ?? undefined,
-  publishedAt: raw.webPublicationDate,
-});
+export const mapGuardianResult = (raw: RawResult): Article | undefined =>
+  createArticle({
+    source: 'guardian',
+    title: raw.webTitle,
+    description: raw.fields?.trailText,
+    url: raw.webUrl,
+    imageUrl: raw.fields?.thumbnail,
+    author: raw.fields?.byline,
+    categories: [raw.sectionId, raw.sectionName],
+    publishedAt: raw.webPublicationDate,
+  });
 
 export class GuardianProvider implements NewsProvider {
   readonly id = 'guardian' as const;
@@ -69,6 +70,8 @@ export class GuardianProvider implements NewsProvider {
       page,
     });
     const { response } = responseSchema.parse(payload);
-    return parseItems(resultSchema, response.results).map(mapGuardianResult);
+    return parseItems(resultSchema, response.results).flatMap(
+      (item) => mapGuardianResult(item) ?? [],
+    );
   }
 }

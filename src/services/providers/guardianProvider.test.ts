@@ -12,19 +12,38 @@ describe('GuardianProvider', () => {
     const { provider } = setup();
     const articles = await provider.search({});
 
-    expect(articles).toHaveLength(2);
+    expect(articles).toHaveLength(4);
     expect(articles[0]).toMatchObject({
       title: 'Markets edge higher',
-      description: 'Investors cheer rate hopes.',
+      description: 'Investors cheer rate hopes & more.',
       url: 'https://www.theguardian.com/business/2024/may/02/markets',
       imageUrl: 'https://media.guim.co.uk/markets.jpg',
-      author: 'John Writer',
+      authors: ['John Writer', 'Ann Other'],
       source: 'guardian',
       sourceName: 'The Guardian',
-      category: 'Business',
-      publishedAt: '2024-05-02T09:15:00Z',
+      publisher: undefined,
+      category: 'business',
+      publishedAt: '2024-05-02T09:15:00.000Z',
     });
-    expect(articles[1]).toMatchObject({ imageUrl: undefined, author: undefined });
+  });
+
+  it('maps sections to our categories and leaves unknown ones undefined', async () => {
+    const { provider } = setup();
+    const articles = await provider.search({});
+
+    expect(articles.map((a) => a.category)).toEqual([
+      'business',
+      'world',
+      'entertainment',
+      undefined,
+    ]);
+    expect(articles[1]).toMatchObject({ imageUrl: undefined, authors: [] }); // "US news" -> world
+  });
+
+  it('converts offset timestamps to UTC', async () => {
+    const { provider } = setup();
+    const film = (await provider.search({}))[2];
+    expect(film?.publishedAt).toBe('2024-04-30T11:00:00.000Z');
   });
 
   it('maps unified filters to Guardian query params', async () => {

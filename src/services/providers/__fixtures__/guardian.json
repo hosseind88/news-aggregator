@@ -11,18 +11,40 @@
         "webUrl": "https://www.theguardian.com/business/2024/may/02/markets",
         "fields": {
           "thumbnail": "https://media.guim.co.uk/markets.jpg",
-          "trailText": "Investors <strong>cheer</strong> rate hopes.",
-          "byline": "John Writer"
-        }
+          "trailText": "Investors <strong>cheer</strong> rate hopes &amp; more.",
+          "byline": "John Writer in Washington and Ann Other"
+        },
+        "sectionId": "business"
       },
       {
         "id": "world/2024/may/01/bare",
-        "sectionName": "World news",
+        "sectionName": "US news",
         "webPublicationDate": "2024-05-01T12:00:00Z",
         "webTitle": "Bare result",
-        "webUrl": "https://www.theguardian.com/world/2024/may/01/bare"
+        "webUrl": "https://www.theguardian.com/world/2024/may/01/bare",
+        "sectionId": "us-news"
       },
-      { "id": "broken", "webTitle": "", "webUrl": "nope" }
+      {
+        "id": "broken",
+        "webTitle": "",
+        "webUrl": "nope"
+      },
+      {
+        "id": "x/film",
+        "sectionId": "film",
+        "sectionName": "Film",
+        "webPublicationDate": "2024-04-30T12:00:00+01:00",
+        "webTitle": "Film review",
+        "webUrl": "https://www.theguardian.com/film/2024/apr/30/review"
+      },
+      {
+        "id": "x/food",
+        "sectionId": "food",
+        "sectionName": "Food",
+        "webPublicationDate": "2024-04-29T12:00:00Z",
+        "webTitle": "Recipe",
+        "webUrl": "https://www.theguardian.com/food/recipe"
+      }
     ]
   }
 }

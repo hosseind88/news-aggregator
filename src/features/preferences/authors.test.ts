@@ -1,35 +1,28 @@
 import { makeArticle } from '@/test/factories';
-import { collectAuthors, isByAuthor, prioritiseAuthors, splitAuthors } from './authors';
+import { collectAuthors, isByAuthor, prioritiseAuthors } from './authors';
 
 describe('authors helpers', () => {
-  it('splits multi-author bylines and drops URLs', () => {
-    expect(splitAuthors('Ann Author and Bob Coauthor, Cy Third')).toEqual([
-      'Ann Author',
-      'Bob Coauthor',
-      'Cy Third',
-    ]);
-    expect(splitAuthors('https://example.com/someone')).toEqual([]);
-  });
-
-  it('collects unique sorted authors', () => {
+  it('collects unique sorted authors case-insensitively', () => {
     const articles = [
-      makeArticle({ author: 'Zed' }),
-      makeArticle({ author: 'Amy and zed' }),
-      makeArticle({ author: undefined }),
+      makeArticle({ authors: ['Zed Zee'] }),
+      makeArticle({ authors: ['Amy Ames', 'zed zee'] }),
+      makeArticle({ authors: [] }),
     ];
-    expect(collectAuthors(articles)).toEqual(['Amy', 'zed']);
+    expect(collectAuthors(articles)).toEqual(['Amy Ames', 'Zed Zee']);
   });
 
-  it('matches followed authors case-insensitively inside a byline', () => {
-    expect(isByAuthor(makeArticle({ author: 'Ann Author and Bob' }), ['bob'])).toBe(true);
-    expect(isByAuthor(makeArticle({ author: undefined }), ['bob'])).toBe(false);
+  it('matches followed authors exactly but case-insensitively', () => {
+    const article = makeArticle({ authors: ['Ann Author', 'Bob Roe'] });
+    expect(isByAuthor(article, ['bob roe'])).toBe(true);
+    expect(isByAuthor(article, ['Bob'])).toBe(false);
+    expect(isByAuthor(makeArticle({ authors: [] }), ['bob roe'])).toBe(false);
   });
 
   it('moves followed authors first and keeps the rest in order', () => {
-    const a = makeArticle({ id: 'a', author: 'X' });
-    const b = makeArticle({ id: 'b', author: 'Y' });
-    const c = makeArticle({ id: 'c', author: 'Z' });
-    expect(prioritiseAuthors([a, b, c], ['Z']).map((x) => x.id)).toEqual(['c', 'a', 'b']);
+    const a = makeArticle({ id: 'a', authors: ['X Xu'] });
+    const b = makeArticle({ id: 'b', authors: ['Y Yu'] });
+    const c = makeArticle({ id: 'c', authors: ['Z Zu'] });
+    expect(prioritiseAuthors([a, b, c], ['Z Zu']).map((x) => x.id)).toEqual(['c', 'a', 'b']);
     expect(prioritiseAuthors([a, b, c], [])).toEqual([a, b, c]);
   });
 });

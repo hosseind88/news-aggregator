@@ -3,17 +3,23 @@
   "totalResults": 4,
   "articles": [
     {
-      "source": { "id": "bbc-news", "name": "BBC News" },
-      "author": "Jane Reporter",
-      "title": "Chip makers rally on AI demand",
-      "description": "<p>Shares rose sharply.</p>",
+      "source": {
+        "id": "bbc-news",
+        "name": "BBC News"
+      },
+      "author": "By JANE REPORTER and John O'Neil, BBC News",
+      "title": "Chip makers rally on AI demand - BBC News",
+      "description": "<p>Shares &amp; bonds rose&nbsp;sharply.</p>\n<p>Read   more</p>",
       "url": "https://www.bbc.co.uk/news/chips",
       "urlToImage": "https://img.example.com/chips.jpg",
       "publishedAt": "2024-05-02T08:30:00Z",
       "content": "..."
     },
     {
-      "source": { "id": null, "name": null },
+      "source": {
+        "id": null,
+        "name": null
+      },
       "author": null,
       "title": "[Removed]",
       "description": "[Removed]",
@@ -22,14 +28,20 @@
       "publishedAt": "2024-05-02T08:00:00Z"
     },
     {
-      "source": { "id": null, "name": "Wire" },
-      "author": null,
-      "title": "No image story",
+      "source": {
+        "id": null,
+        "name": "Wire"
+      },
+      "author": "https://www.facebook.com/wire",
+      "title": "No image &amp; no fuss",
       "description": null,
       "url": "https://wire.example.com/story",
-      "urlToImage": null,
+      "urlToImage": "http://img.example.com/story.jpg?w=1",
       "publishedAt": "2024-05-01T08:00:00Z"
     },
-    { "title": "Malformed: no url", "publishedAt": "2024-05-01T00:00:00Z" }
+    {
+      "title": "Malformed: no url",
+      "publishedAt": "2024-05-01T00:00:00Z"
+    }
   ]
 }

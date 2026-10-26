@@ -7,26 +7,62 @@
         "web_url": "https://www.nytimes.com/2024/05/02/technology/ai.html",
         "abstract": "A new wave of AI tools.",
         "snippet": "snippet text",
-        "byline": { "original": "By Ann Author and Bob Coauthor" },
+        "byline": {
+          "original": "By Ann Author, Bob Coauthor and Cy Third"
+        },
         "section_name": "Technology",
         "pub_date": "2024-05-02T10:00:00+0000",
-        "headline": { "main": "AI Tools Arrive" },
+        "headline": {
+          "main": "AI Tools Arrive"
+        },
         "multimedia": [
-          { "url": "images/2024/05/02/big.jpg", "subtype": "xlarge" },
-          { "url": "images/2024/05/02/thumb.jpg", "subtype": "thumbnail" }
+          {
+            "url": "images/2024/05/02/big.jpg",
+            "subtype": "xlarge"
+          },
+          {
+            "url": "images/2024/05/02/thumb.jpg",
+            "subtype": "thumbnail"
+          }
         ]
       },
       {
         "_id": "nyt://article/2",
         "web_url": "https://www.nytimes.com/2024/05/01/world/plain.html",
         "snippet": "Only a snippet.",
-        "byline": { "original": "" },
-        "section_name": "World",
+        "byline": {
+          "original": ""
+        },
+        "section_name": "Business Day",
         "pub_date": "2024-05-01T10:00:00+0000",
-        "headline": { "main": "Plain story" },
-        "multimedia": []
+        "headline": {
+          "main": "Plain story"
+        },
+        "multimedia": [],
+        "news_desk": "Business"
       },
-      { "_id": "bad", "web_url": "x" }
+      {
+        "_id": "nyt://article/3",
+        "web_url": "https://www.nytimes.com/2024/04/30/arts/x.html",
+        "snippet": "Arts piece",
+        "byline": {
+          "original": "By THE NEW YORK TIMES"
+        },
+        "section_name": "Arts",
+        "pub_date": "2024-04-30T10:00:00+0000",
+        "headline": {
+          "main": "Arts piece"
+        },
+        "multimedia": {
+          "default": {
+            "url": "https://static01.nyt.com/images/a.jpg"
+          }
+        }
+      },
+      {
+        "_id": "bad",
+        "web_url": "x"
+      }
     ]
   }
 }

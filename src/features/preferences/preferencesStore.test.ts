@@ -23,19 +23,20 @@ describe('preferencesStore', () => {
 
   it('adds trimmed authors, ignoring blanks and case-insensitive duplicates', () => {
     const { addAuthor } = usePreferencesStore.getState();
-    addAuthor('  Jane Doe ');
+    addAuthor('  By JANE DOE ');
     addAuthor('jane doe');
     addAuthor('   ');
+    addAuthor('https://example.com/jane');
 
     expect(usePreferencesStore.getState().authors).toEqual(['Jane Doe']);
   });
 
   it('removes an author', () => {
-    usePreferencesStore.getState().addAuthor('A');
-    usePreferencesStore.getState().addAuthor('B');
-    usePreferencesStore.getState().removeAuthor('A');
+    usePreferencesStore.getState().addAuthor('Ann Author');
+    usePreferencesStore.getState().addAuthor('Bob Roe');
+    usePreferencesStore.getState().removeAuthor('Ann Author');
 
-    expect(usePreferencesStore.getState().authors).toEqual(['B']);
+    expect(usePreferencesStore.getState().authors).toEqual(['Bob Roe']);
   });
 
   it('persists data (without actions) to localStorage', () => {

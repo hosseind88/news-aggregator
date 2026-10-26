@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Category, SourceId } from '@/domain/news';
+import { authorKey, normalizeAuthorName } from '@/services/normalize';
 
 export interface PreferencesData {
   sources: SourceId[];
@@ -30,8 +31,8 @@ export const usePreferencesStore = create<PreferencesState>()(
       setCategories: (categories) => set({ categories }),
       addAuthor: (author) =>
         set((state) => {
-          const name = author.trim();
-          const exists = state.authors.some((a) => a.toLowerCase() === name.toLowerCase());
+          const name = normalizeAuthorName(author);
+          const exists = state.authors.some((a) => authorKey(a) === authorKey(name ?? ''));
           return name && !exists ? { authors: [...state.authors, name] } : state;
         }),
       removeAuthor: (author) =>
