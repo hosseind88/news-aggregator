@@ -384,4 +384,52 @@ describe('NewsAggregator', () => {
       expect(s.search).toHaveBeenCalledWith(expect.objectContaining({ signal }));
     });
   });
+
+  describe('author filter', () => {
+    const byline = (articles: Article[], authors: string[]) =>
+      articles.map((a, i) => ({ ...a, authors: i % 4 === 0 ? authors : ['Someone Else'] }));
+
+    it('forwards the authors to every provider', async () => {
+      const s = pagedSource('guardian', { count: 5, step: 1 });
+      await new NewsAggregator([s.provider]).search({ authors: ['Jane Doe'] });
+      expect(s.search).toHaveBeenCalledWith(expect.objectContaining({ authors: ['Jane Doe'] }));
+    });
+
+    it('keeps only articles by the followed authors, ignoring case', async () => {
+      const source = pagedSource('guardian', { count: 20, step: 1, size: 20 });
+      const provider = makeProvider({
+        id: 'guardian',
+        supportsAuthorFilter: true,
+        search: async () => page(byline(source.all, ['Jose Nunez']), false),
+      });
+      const { articles } = await new NewsAggregator([provider]).search({
+        authors: ['jose  NUNEZ'],
+      });
+      expect(articles).toHaveLength(5);
+      expect(articles.every((a) => a.authors.includes('Jose Nunez'))).toBe(true);
+    });
+
+    it('scans a source that cannot filter by author at most one page per call', async () => {
+      const s = pagedSource('newsapi', { count: 500, step: 1, size: 20 });
+      const aggregator = new NewsAggregator([s.provider]);
+
+      const first = await aggregator.search({ authors: ['Nobody'] });
+      expect(first.articles).toEqual([]);
+      expect(s.search).toHaveBeenCalledTimes(1);
+      expect(first.nextCursor).toBeDefined();
+
+      // The next explicit call continues one page further, not from scratch.
+      await aggregator.search({ authors: ['Nobody'] }, { cursor: first.nextCursor });
+      expect(s.search.mock.calls.map(([r]) => r.page)).toEqual([1, 2]);
+    });
+
+    it('bounds the rounds spent on a source that can filter but has no matches to give', async () => {
+      const search = vi.fn(async () => page([], true));
+      const aggregator = new NewsAggregator([
+        makeProvider({ id: 'guardian', supportsAuthorFilter: true, search }),
+      ]);
+      await aggregator.search({ authors: ['Nobody'] });
+      expect(search.mock.calls.length).toBeLessThanOrEqual(3);
+    });
+  });
 });

@@ -5,13 +5,26 @@ import {
   type SearchParams,
   type SourceId,
 } from '@/domain/news';
-import { isValidDay } from '@/services/normalize';
+import { authorKey, isValidDay } from '@/services/normalize';
 
 export type ArticleFilters = SearchParams & { sources?: SourceId[] };
 
 const unique = <T extends string>(values: readonly T[] | undefined, allowed: readonly T[]) => {
   const kept = allowed.filter((value) => values?.includes(value));
   return kept.length ? kept : undefined;
+};
+
+const MAX_AUTHORS = 30;
+
+/** Trimmed, de-duplicated (case-insensitive) and ordered, so equivalent lists share a cache key. */
+const uniqueAuthors = (authors: readonly string[] | undefined) => {
+  const seen = new Map<string, string>();
+  authors?.forEach((raw) => {
+    const name = raw.trim().replace(/\s+/g, ' ');
+    if (name && !seen.has(authorKey(name))) seen.set(authorKey(name), name);
+  });
+  const sorted = [...seen.entries()].sort(([a], [b]) => a.localeCompare(b));
+  return sorted.length ? sorted.slice(0, MAX_AUTHORS).map(([, name]) => name) : undefined;
 };
 
 /**
@@ -32,6 +45,7 @@ export const normalizeFilters = (filters: ArticleFilters): ArticleFilters => {
     from,
     to,
     categories: unique<Category>(filters.categories, CATEGORIES),
+    authors: uniqueAuthors(filters.authors),
     sources: sources?.length === SOURCE_IDS.length ? undefined : sources,
   };
 };

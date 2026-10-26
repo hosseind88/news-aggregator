@@ -7,7 +7,11 @@ interface Props {
   columns: number;
   loadedCount: number;
   hasNextPage: boolean;
-  isFetchingNextPage: boolean;
+  /** A page is loading or about to be (nothing else is rendered as loading). */
+  isLoading: boolean;
+  /** Auto-loading stopped; the next page only loads on request. */
+  paused: boolean;
+  onLoadOlder: () => void;
   isError: boolean;
   onRetry: () => void;
   setSentinel: (node: Element | null) => void;
@@ -18,17 +22,19 @@ export function InfiniteScrollFooter({
   columns,
   loadedCount,
   hasNextPage,
-  isFetchingNextPage,
+  isLoading,
+  paused,
+  onLoadOlder,
   isError,
   onRetry,
   setSentinel,
 }: Props) {
   return (
     <div className="mt-6 space-y-4">
-      {hasNextPage && <div ref={setSentinel} aria-hidden="true" />}
+      {hasNextPage && !paused && <div ref={setSentinel} aria-hidden="true" />}
 
       <p aria-live="polite" className="sr-only">
-        {isFetchingNextPage ? 'Loading more articles' : `${loadedCount} articles loaded`}
+        {isLoading ? 'Loading more articles' : `${loadedCount} articles loaded`}
       </p>
 
       {isError ? (
@@ -41,8 +47,18 @@ export function InfiniteScrollFooter({
             Retry
           </Button>
         </div>
+      ) : paused ? (
+        // With nothing loaded the empty state carries this action instead.
+        loadedCount > 0 && (
+          <div className="flex flex-col items-center gap-3 text-center text-sm text-slate-500 dark:text-slate-400">
+            <p>No more recent matches. Older articles may have more.</p>
+            <Button variant="secondary" onClick={onLoadOlder}>
+              Search older articles
+            </Button>
+          </div>
+        )
       ) : hasNextPage ? (
-        <LinearProgress active={isFetchingNextPage} label="Loading more articles" />
+        <LinearProgress active={isLoading} label="Loading more articles" />
       ) : (
         loadedCount > 0 && (
           <p className="text-center text-sm text-slate-500 dark:text-slate-400">
@@ -51,7 +67,7 @@ export function InfiniteScrollFooter({
         )
       )}
 
-      {isFetchingNextPage && !isError && (
+      {isLoading && !isError && (
         <div className={GRID_CLASS}>
           {Array.from({ length: columns }, (_, i) => (
             <ArticleCardSkeleton key={i} />

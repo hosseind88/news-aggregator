@@ -103,3 +103,9 @@ export const normalizeAuthorName = (raw: string): string | undefined => normaliz
 
 /** Comparison key for matching preferences against article authors. */
 export const authorKey = key;
+
+/** Case-insensitive match of an article's (normalised) authors against a list of followed names. */
+export const hasAnyAuthor = (articleAuthors: readonly string[], followed: readonly string[]) => {
+  const keys = new Set(followed.map(key));
+  return articleAuthors.some((name) => keys.has(key(name)));
+};

@@ -41,6 +41,8 @@ export interface SearchParams {
   from?: string;
   to?: string;
   categories?: Category[];
+  /** Only articles bylined by one of these people (names as normalised by the adapters). */
+  authors?: string[];
 }
 
 /** One page request to a single source. `page` is 1-based for every provider. */
@@ -60,6 +62,8 @@ export interface NewsProvider {
   readonly name: string;
   /** Categories this source can filter on; others are skipped by the aggregator. */
   readonly supportedCategories: readonly Category[];
+  /** True when the API can narrow a search to bylines, so the author filter is pushed upstream. */
+  readonly supportsAuthorFilter?: boolean;
   search(request: ProviderRequest): Promise<SourcePage>;
 }
 

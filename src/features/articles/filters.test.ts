@@ -33,4 +33,12 @@ describe('normalizeFilters', () => {
     expect(normalizeFilters({ sources: ['nyt', 'guardian', 'newsapi'] }).sources).toBeUndefined();
     expect(normalizeFilters({ sources: ['nyt'] }).sources).toEqual(['nyt']);
   });
+
+  it('trims and de-duplicates authors (case-insensitively) and treats none as no filter', () => {
+    expect(normalizeFilters({ authors: [' Jane Doe ', 'jane doe', 'Sam'] }).authors).toEqual([
+      'Jane Doe',
+      'Sam',
+    ]);
+    expect(normalizeFilters({ authors: [] }).authors).toBeUndefined();
+  });
 });

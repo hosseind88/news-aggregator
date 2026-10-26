@@ -11,12 +11,17 @@ import type {
   SourceId,
 } from '@/domain/news';
 import { AllSourcesFailedError, SourceExhaustedError, describeError } from '@/services/errors';
-import { canonicalUrl, isWithinDateRange, titleKey } from '@/services/normalize';
+import { canonicalUrl, hasAnyAuthor, isWithinDateRange, titleKey } from '@/services/normalize';
 import { compareNewest, dedupeArticles } from './dedupe';
 
 export const ARTICLES_PER_PAGE = 24;
 /** Upper bound on upstream round-trips needed to fill one page. */
 const MAX_ROUNDS = 8;
+/**
+ * With an author filter most fetched articles are discarded, so a page may not fill. Keep the
+ * per-call budget small and let the next call (an explicit user action) continue the search.
+ */
+const MAX_ROUNDS_FILTERED = 3;
 
 const time = (article: Article) => Date.parse(article.publishedAt);
 
@@ -28,6 +33,10 @@ const time = (article: Article) => Date.parse(article.publishedAt);
  * An article is only emitted once no active source can still hold anything newer
  * (the "watermark"), so the feed is globally ordered across pages, and a source that runs
  * out of results (or hits its plan cap) is simply no longer called.
+ *
+ * Author filters are pushed to the sources that support them; everything fetched is still
+ * matched client-side. A source that cannot filter by author is scanned at most one page per
+ * call, so "find this author" never fans out into fetching that source's whole archive.
  *
  * The cursor is immutable and JSON-serialisable: retrying a failed page re-runs from the
  * same cursor. Depends only on the `NewsProvider` abstraction; adapters are injected.
@@ -47,7 +56,12 @@ export class NewsAggregator implements NewsService {
     const failures: SourceFailure[] = [];
     const byId = new Map(this.registered.map((provider) => [provider.id, provider]));
 
-    const active = () => Object.entries(state).filter(([, c]) => c.status === 'active');
+    const authors = params.authors?.length ? params.authors : undefined;
+    const maxRounds = authors ? MAX_ROUNDS_FILTERED : MAX_ROUNDS;
+    // Sources that already spent their one scan page in this call (author filter only).
+    const scanned = new Set<string>();
+    const active = () =>
+      Object.entries(state).filter(([id, c]) => c.status === 'active' && !scanned.has(id));
 
     const fetchFrom = async (ids: SourceId[]) => {
       const settled = await Promise.allSettled(
@@ -59,10 +73,13 @@ export class NewsAggregator implements NewsService {
       signal?.throwIfAborted();
       settled.forEach((result, index) => {
         const id = ids[index]!;
+        if (authors && !byId.get(id)!.supportsAuthorFilter) scanned.add(id);
         const sourceCursor = state[id]!;
         if (result.status === 'fulfilled') {
-          const inRange = result.value.articles.filter((a) =>
-            isWithinDateRange(a.publishedAt, params.from, params.to),
+          const inRange = result.value.articles.filter(
+            (a) =>
+              isWithinDateRange(a.publishedAt, params.from, params.to) &&
+              (!authors || hasAnyAuthor(a.authors, authors)),
           );
           sourceCursor.buffer = [...sourceCursor.buffer, ...inRange].sort(compareNewest);
           sourceCursor.page += 1;
@@ -81,7 +98,7 @@ export class NewsAggregator implements NewsService {
     };
 
     let candidates: Article[] = [];
-    for (let round = 0; round < MAX_ROUNDS; round += 1) {
+    for (let round = 0; round < maxRounds; round += 1) {
       const live = active().map(([id]) => id as SourceId);
       const watermark = Math.max(
         -Infinity,

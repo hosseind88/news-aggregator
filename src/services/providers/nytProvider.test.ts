@@ -108,4 +108,10 @@ describe('NytProvider', () => {
     expect((await provider.search({ page: 99 })).hasMore).toBe(true);
     expect((await provider.search({ page: 100 })).hasMore).toBe(false);
   });
+
+  it('phrase-searches followed authors in q', async () => {
+    const { provider, getJson } = setup();
+    await provider.search({ page: 1, authors: ['Ann Author'] });
+    expect(getJson.mock.calls[0]?.[1]).toMatchObject({ q: '("Ann Author")' });
+  });
 });

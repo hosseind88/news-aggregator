@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Button } from '@/shared/ui/Button';
 import { ArticleResults } from '@/features/articles/components/ArticleResults';
 import { useArticles } from '@/features/articles/hooks/useArticles';
 import { isByAuthor, prioritiseAuthors } from '@/features/preferences/authors';
@@ -14,6 +15,8 @@ export function FeedPage() {
   const query = useArticles({
     sources: sources.length ? sources : undefined,
     categories: categories.length ? categories : undefined,
+    // Pushed to the sources that can filter by byline; the rest is matched client-side.
+    authors: onlyFollowed ? authors : undefined,
   });
 
   const visible = useMemo(() => {
@@ -61,6 +64,15 @@ export function FeedPage() {
         query={query}
         articles={visible}
         isFollowed={(article) => isByAuthor(article, authors)}
+        stalledTitle="No recent articles from your followed authors"
+        stalledDescription="The latest articles from every source were not written by anyone you follow. Search older articles, or show everything."
+        emptyAction={
+          onlyFollowed ? (
+            <Button variant="secondary" onClick={() => setOnlyFollowed(false)}>
+              Show all articles
+            </Button>
+          ) : undefined
+        }
         emptyTitle={onlyFollowed ? 'No articles from followed authors yet' : 'No articles found'}
         emptyDescription={
           onlyFollowed

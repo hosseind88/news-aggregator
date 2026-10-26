@@ -17,6 +17,24 @@ export const parseItems = <T extends z.ZodTypeAny>(schema: T, raw: unknown): z.i
 export const supportedCategoriesOf = (map: Partial<Record<Category, unknown>>): Category[] =>
   Object.keys(map) as Category[];
 
+/** Upstream URLs have a length limit, and a very long OR-list stops being a useful filter. */
+const MAX_AUTHORS_PUSHED = 10;
+
+/**
+ * Full-text query that narrows a search to bylines (`"A" OR "B"`), optionally ANDed with the
+ * user's keyword. Undefined when there is nothing to filter on.
+ */
+export const authorQuery = (authors: readonly string[] = [], keyword?: string) => {
+  const names = authors
+    .slice(0, MAX_AUTHORS_PUSHED)
+    .map((name) => name.replace(/["()]/g, ' ').trim())
+    .filter(Boolean)
+    .map((name) => `"${name}"`);
+  if (!names.length) return keyword;
+  const byline = `(${names.join(' OR ')})`;
+  return keyword ? `${byline} AND (${keyword})` : byline;
+};
+
 /** Local calendar day -> instant (ISO-8601 UTC) for APIs that accept timestamps. */
 export const dayStartInstant = (day?: string): string | undefined =>
   startOfLocalDay(day)?.toISOString();

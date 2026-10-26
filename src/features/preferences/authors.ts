@@ -1,5 +1,5 @@
 import type { Article } from '@/domain/news';
-import { authorKey } from '@/services/normalize';
+import { authorKey, hasAnyAuthor } from '@/services/normalize';
 
 /** Unique author names across articles (already normalised by the adapters), sorted. */
 export const collectAuthors = (articles: Article[], limit = 30): string[] => {
@@ -11,10 +11,8 @@ export const collectAuthors = (articles: Article[], limit = 30): string[] => {
 };
 
 /** Case-insensitive match of followed authors against the article's normalised authors. */
-export const isByAuthor = (article: Article, followed: string[]): boolean => {
-  const keys = new Set(followed.map(authorKey));
-  return article.authors.some((name) => keys.has(authorKey(name)));
-};
+export const isByAuthor = (article: Article, followed: string[]): boolean =>
+  hasAnyAuthor(article.authors, followed);
 
 /** Stable partition: followed authors first, original order preserved otherwise. */
 export const prioritiseAuthors = (articles: Article[], followed: string[]): Article[] => {

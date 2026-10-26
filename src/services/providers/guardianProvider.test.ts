@@ -97,4 +97,22 @@ describe('GuardianProvider', () => {
     await provider.search({ page: 1, signal });
     expect(getJson.mock.calls[0]?.[2]).toEqual({ signal });
   });
+
+  it('searches bylines for followed authors and combines them with the keyword', async () => {
+    const { provider, getJson } = setup();
+    await provider.search({ page: 1, authors: ['Jane Doe', 'Sam "Q" (Lee)'], keyword: 'markets' });
+    expect(getJson.mock.calls[0]?.[1]).toMatchObject({
+      q: '("Jane Doe" OR "Sam  Q   Lee") AND (markets)',
+      'query-fields': 'byline,headline,body',
+    });
+  });
+
+  it('leaves the default query fields alone without authors', async () => {
+    const { provider, getJson } = setup();
+    await provider.search({ page: 1, keyword: 'markets' });
+    expect(getJson.mock.calls[0]?.[1]).toMatchObject({
+      q: 'markets',
+      'query-fields': undefined,
+    });
+  });
 });

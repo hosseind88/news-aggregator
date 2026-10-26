@@ -2,7 +2,13 @@ import { z } from 'zod';
 import type { Article, Category, NewsProvider, ProviderRequest, SourcePage } from '@/domain/news';
 import type { HttpClient } from '@/services/http/httpClient';
 import { createArticle } from '@/services/normalize';
-import { dayEndInstant, dayStartInstant, parseItems, supportedCategoriesOf } from './shared';
+import {
+  authorQuery,
+  dayEndInstant,
+  dayStartInstant,
+  parseItems,
+  supportedCategoriesOf,
+} from './shared';
 
 const PAGE_SIZE = 20;
 
@@ -58,6 +64,7 @@ export class GuardianProvider implements NewsProvider {
   readonly id = 'guardian' as const;
   readonly name = 'The Guardian';
   readonly supportedCategories = supportedCategoriesOf(SECTION_MAP);
+  readonly supportsAuthorFilter = true;
 
   constructor(private readonly http: HttpClient) {}
 
@@ -66,13 +73,17 @@ export class GuardianProvider implements NewsProvider {
     from,
     to,
     categories = [],
+    authors = [],
     page,
     signal,
   }: ProviderRequest): Promise<SourcePage> {
     const payload = await this.http.getJson(
       '/api/guardian/search',
       {
-        q: keyword,
+        q: authorQuery(authors, keyword),
+        // Contributor tag slugs are not derivable from names, so search the byline field
+        // (plus headline/body when a keyword has to match too).
+        'query-fields': authors.length ? (keyword ? 'byline,headline,body' : 'byline') : undefined,
         'from-date': dayStartInstant(from),
         'to-date': dayEndInstant(to),
         section: categories.map((category) => SECTION_MAP[category]).join('|') || undefined,

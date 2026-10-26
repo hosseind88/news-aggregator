@@ -38,7 +38,7 @@ export function useArticles(filters: ArticleFilters, { enabled = true } = {}) {
     };
   }, [query.data]);
 
-  return { ...query, articles, failures };
+  return { ...query, articles, failures, filtersKey: JSON.stringify(normalized) };
 }
 
 export type ArticlesQuery = ReturnType<typeof useArticles>;

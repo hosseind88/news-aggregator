@@ -3,7 +3,7 @@ import type { Article, Category, NewsProvider, ProviderRequest, SourcePage } fro
 import { endOfLocalDay, startOfLocalDay, toUtcDayStamp } from '@/services/normalize';
 import type { HttpClient } from '@/services/http/httpClient';
 import { createArticle } from '@/services/normalize';
-import { parseItems, supportedCategoriesOf } from './shared';
+import { authorQuery, parseItems, supportedCategoriesOf } from './shared';
 
 const PAGE_SIZE = 10;
 /** NYT serves at most 100 pages (1000 results) per query. */
@@ -49,7 +49,9 @@ const responseSchema = z.object({
       .array(z.unknown())
       .nullish()
       .transform((docs) => docs ?? []),
+    // Newer responses call the block `metadata`.
     meta: z.object({ hits: z.number().optional() }).nullish(),
+    metadata: z.object({ hits: z.number().optional() }).nullish(),
   }),
 });
 
@@ -84,6 +86,7 @@ export class NytProvider implements NewsProvider {
   readonly id = 'nyt' as const;
   readonly name = 'The New York Times';
   readonly supportedCategories = supportedCategoriesOf(SECTION_MAP);
+  readonly supportsAuthorFilter = true;
 
   constructor(private readonly http: HttpClient) {}
 
@@ -92,6 +95,7 @@ export class NytProvider implements NewsProvider {
     from,
     to,
     categories = [],
+    authors = [],
     page,
     signal,
   }: ProviderRequest): Promise<SourcePage> {
@@ -99,7 +103,8 @@ export class NytProvider implements NewsProvider {
     const payload = await this.http.getJson(
       '/api/nyt/articlesearch.json',
       {
-        q: keyword,
+        // Phrase search on the name: it is what the live API honours (byline `fq` returns nothing).
+        q: authorQuery(authors, keyword),
         begin_date: utcDayStamp(startOfLocalDay(from)),
         end_date: utcDayStamp(endOfLocalDay(to)),
         fq: sections ? `section_name:(${sections})` : undefined,
@@ -109,7 +114,7 @@ export class NytProvider implements NewsProvider {
       { signal },
     );
     const { response } = responseSchema.parse(payload);
-    const reachable = Math.min(response.meta?.hits ?? Infinity, RESULT_CAP);
+    const reachable = Math.min((response.meta ?? response.metadata)?.hits ?? Infinity, RESULT_CAP);
     return {
       articles: parseItems(docSchema, response.docs).flatMap((item) => mapNytDoc(item) ?? []),
       hasMore: response.docs.length > 0 && page * PAGE_SIZE < reachable,
