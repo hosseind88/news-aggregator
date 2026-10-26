@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { CATEGORY_LABELS, type Article } from '@/domain/news';
 import { formatPublished } from '@/shared/lib/date';
+import { ArticleImage } from '@/shared/ui/ArticleImage';
 
 interface Props {
   article: Article;
@@ -9,7 +9,6 @@ interface Props {
 }
 
 export function ArticleCard({ article, followed = false }: Props) {
-  const [imageFailed, setImageFailed] = useState(false);
   const {
     title,
     description,
@@ -24,15 +23,12 @@ export function ArticleCard({ article, followed = false }: Props) {
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition focus-within:ring-2 focus-within:ring-blue-600 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
-      {imageUrl && !imageFailed && (
-        <img
-          src={imageUrl}
-          alt=""
-          loading="lazy"
-          onError={() => setImageFailed(true)}
-          className="aspect-video w-full object-cover"
-        />
-      )}
+      <ArticleImage
+        src={imageUrl}
+        alt={title}
+        source={article.source}
+        label={category ? CATEGORY_LABELS[category] : sourceName}
+      />
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-slate-600 dark:text-slate-400">
           <span className="rounded bg-slate-100 px-2 py-0.5 text-slate-800 dark:bg-slate-800 dark:text-slate-200">
