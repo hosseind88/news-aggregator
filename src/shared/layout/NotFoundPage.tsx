@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
+import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle';
 import { EmptyState } from '@/shared/ui/EmptyState';
 
 export function NotFoundPage() {
+  useDocumentTitle('Page not found');
   return (
     <EmptyState
       title="Page not found"

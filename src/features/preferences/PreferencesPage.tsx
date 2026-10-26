@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle';
 import { useState, type FormEvent } from 'react';
 import { CATEGORIES, CATEGORY_LABELS, SOURCE_IDS, SOURCE_LABELS } from '@/domain/news';
 import { authorKey } from '@/services/normalize';
@@ -13,6 +14,7 @@ const sourceOptions = SOURCE_IDS.map((value) => ({ value, label: SOURCE_LABELS[v
 const categoryOptions = CATEGORIES.map((value) => ({ value, label: CATEGORY_LABELS[value] }));
 
 export function PreferencesPage() {
+  useDocumentTitle('Preferences');
   const { sources, categories, authors, hasPreferences } = usePreferences();
   const { setSources, setCategories, addAuthor, removeAuthor, reset } =
     usePreferencesStore.getState();

@@ -5,10 +5,12 @@ import { useDebounce } from '@/shared/hooks/useDebounce';
 import { Button } from '@/shared/ui/Button';
 import { TextInput } from '@/shared/ui/TextInput';
 import { FilterPanel } from './FilterPanel';
+import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle';
 import { useSearchFilters } from './useSearchFilters';
 
 export function SearchPage() {
   const { filters, setFilters, reset } = useSearchFilters();
+  useDocumentTitle('Search');
   const [input, setInput] = useState(filters.keyword ?? '');
   const [filtersOpen, setFiltersOpen] = useState(false);
 

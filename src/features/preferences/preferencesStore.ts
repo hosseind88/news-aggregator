@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Category, SourceId } from '@/domain/news';
+import { CATEGORIES, SOURCE_IDS, type Category, type SourceId } from '@/domain/news';
 import { authorKey, normalizeAuthorName } from '@/services/normalize';
 
 export interface PreferencesData {
@@ -23,6 +23,33 @@ const EMPTY: PreferencesData = { sources: [], categories: [], authors: [] };
 
 export const PREFERENCES_STORAGE_KEY = 'news-aggregator:preferences';
 
+const pick = <T extends string>(raw: unknown, allowed: readonly T[]): T[] =>
+  Array.isArray(raw) ? allowed.filter((value) => raw.includes(value)) : [];
+
+const pickAuthors = (raw: unknown): string[] => {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  return raw.flatMap((entry) => {
+    const name = typeof entry === 'string' ? normalizeAuthorName(entry) : undefined;
+    if (!name || seen.has(authorKey(name))) return [];
+    seen.add(authorKey(name));
+    return [name];
+  });
+};
+
+/**
+ * localStorage is user-editable and survives app upgrades, so anything read back is untrusted:
+ * keep only known sources/categories and well-formed, de-duplicated author names.
+ */
+export const sanitizePreferences = (raw: unknown): PreferencesData => {
+  const data = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+  return {
+    sources: pick<SourceId>(data.sources, SOURCE_IDS),
+    categories: pick<Category>(data.categories, CATEGORIES),
+    authors: pickAuthors(data.authors),
+  };
+};
+
 export const usePreferencesStore = create<PreferencesState>()(
   persist(
     (set) => ({
@@ -42,6 +69,7 @@ export const usePreferencesStore = create<PreferencesState>()(
     {
       name: PREFERENCES_STORAGE_KEY,
       version: 1,
+      merge: (persisted, current) => ({ ...current, ...sanitizePreferences(persisted) }),
       // Persist data only, never the action functions.
       partialize: ({ sources, categories, authors }): PreferencesData => ({
         sources,

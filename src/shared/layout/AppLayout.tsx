@@ -1,4 +1,7 @@
+import { Suspense } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { ErrorBoundary } from '@/shared/ui/ErrorBoundary';
+import { LinearProgress } from '@/shared/ui/LinearProgress';
 
 const NAV = [
   { to: '/', label: 'My Feed', end: true },
@@ -35,7 +38,11 @@ export function AppLayout() {
         </div>
       </header>
       <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <Outlet />
+        <ErrorBoundary>
+          <Suspense fallback={<LinearProgress active label="Loading page" />}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
       </main>
       <footer className="border-t border-slate-200 px-4 py-4 text-center text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400">
         Aggregating NewsAPI, The Guardian and The New York Times.

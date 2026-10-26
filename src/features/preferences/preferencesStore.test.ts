@@ -50,7 +50,7 @@ describe('preferencesStore', () => {
     localStorage.setItem(
       PREFERENCES_STORAGE_KEY,
       JSON.stringify({
-        state: { sources: ['guardian'], categories: ['health'], authors: ['X'] },
+        state: { sources: ['guardian'], categories: ['health'], authors: ['Jane Doe'] },
         version: 1,
       }),
     );
@@ -60,7 +60,38 @@ describe('preferencesStore', () => {
     const state = usePreferencesStore.getState();
     expect(state.sources).toEqual(['guardian']);
     expect(state.categories).toEqual(['health']);
-    expect(state.authors).toEqual(['X']);
+    expect(state.authors).toEqual(['Jane Doe']);
     expect(typeof state.setSources).toBe('function');
+  });
+
+  it('ignores corrupt or hand-edited storage instead of crashing', async () => {
+    localStorage.setItem(
+      PREFERENCES_STORAGE_KEY,
+      JSON.stringify({
+        state: {
+          sources: ['nyt', 'bogus', 7],
+          categories: 'oops',
+          authors: ['Jane Doe', 'jane  doe', 42, '', null],
+        },
+        version: 1,
+      }),
+    );
+
+    await usePreferencesStore.persist.rehydrate();
+
+    const state = usePreferencesStore.getState();
+    expect(state.sources).toEqual(['nyt']);
+    expect(state.categories).toEqual([]);
+    expect(state.authors).toEqual(['Jane Doe']);
+  });
+
+  it('falls back to empty preferences when the stored state is not an object', async () => {
+    localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify({ state: 'nope', version: 1 }));
+    await usePreferencesStore.persist.rehydrate();
+    expect(usePreferencesStore.getState()).toMatchObject({
+      sources: [],
+      categories: [],
+      authors: [],
+    });
   });
 });

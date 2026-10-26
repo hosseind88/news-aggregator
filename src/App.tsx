@@ -1,12 +1,20 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { lazy, useState } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { FeedPage } from '@/features/feed/FeedPage';
-import { PreferencesPage } from '@/features/preferences/PreferencesPage';
-import { SearchPage } from '@/features/search/SearchPage';
 import { NotFoundPage } from '@/shared/layout/NotFoundPage';
 import { AppLayout } from '@/shared/layout/AppLayout';
 import { NewsServiceProvider } from '@/services/NewsServiceContext';
+
+// Each page is its own chunk, so the first paint only ships the route being visited.
+const FeedPage = lazy(() =>
+  import('@/features/feed/FeedPage').then((m) => ({ default: m.FeedPage })),
+);
+const SearchPage = lazy(() =>
+  import('@/features/search/SearchPage').then((m) => ({ default: m.SearchPage })),
+);
+const PreferencesPage = lazy(() =>
+  import('@/features/preferences/PreferencesPage').then((m) => ({ default: m.PreferencesPage })),
+);
 
 const createQueryClient = () =>
   new QueryClient({

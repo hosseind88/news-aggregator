@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { ArticleResults } from '@/features/articles/components/ArticleResults';
 import { useArticles } from '@/features/articles/hooks/useArticles';
 import { isByAuthor, prioritiseAuthors } from '@/features/preferences/authors';
+import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle';
 import { usePreferences } from '@/features/preferences/usePreferences';
 
 export function FeedPage() {
   const { sources, categories, authors, hasPreferences } = usePreferences();
   const [onlyFollowed, setOnlyFollowed] = useState(false);
+  useDocumentTitle(hasPreferences ? 'My Feed' : 'Latest news');
 
   const query = useArticles({
     sources: sources.length ? sources : undefined,
