@@ -1,0 +1,30 @@
+{
+ "tag": "after",
+ "upstreamRequests": 5,
+ "bySource": {
+  "newsapi": 3,
+  "guardian": 1,
+  "nyt": 1
+ },
+ "requestsAtEachSecond": [
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5
+ ],
+ "visibleStates": {
+  "emptyState": true,
+  "skeletonRow": false,
+  "loadingBarActive": false,
+  "searchOlderButton": true,
+  "showAllButton": true
+ }
+}

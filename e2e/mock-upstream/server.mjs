@@ -6,7 +6,7 @@
 //   NYT       GET /svc/search/v2/articlesearch.json  10 docs per page, 0-based page, optional 5 req/min limit
 // Test control plane (never reachable through the app's proxy):
 //   POST /__control {source, mode, delayMs}   ok | error | slow | ratelimit | strict-rate | malformed
-//   POST /__articles {source, articles}       replace one source's dataset
+//   POST /__articles {source, articles}       replace one source's dataset (an article may set `author`)
 //   POST /__reset                             back to defaults and clear the log
 //   GET  /__log                               every upstream request since the last reset
 import http from 'node:http';
@@ -82,10 +82,31 @@ const parseBound = (value, endOfDay) => {
   return Number.isNaN(t) ? undefined : t;
 };
 
-const filter = (items, { q, from, to, section }) =>
+const SOURCE_BYLINE = {
+  newsapi: (a) => a.author ?? `Reporter ${a.title.length % 5}`,
+  guardian: (a) => a.author ?? `Staff Writer ${a.title.length % 4}`,
+  nyt: (a) => `By ${a.author ?? `Desk Writer ${a.title.length % 3}`}`,
+};
+
+/**
+ * Author search as the app sends it: `("A" OR "B")` optionally followed by ` AND (keyword)`.
+ * Phrases match the byline (Guardian: when query-fields includes byline; NYT: always, as a
+ * phrase search); anything else is a plain title keyword.
+ */
+const matchesQuery = (a, q, byline) => {
+  if (!q) return true;
+  const authorGroup = q.match(/^\(((?:"[^"]+"(?: OR )?)+)\)(?: AND \((.*)\))?$/);
+  if (!authorGroup) return a.title.toLowerCase().includes(q.toLowerCase());
+  const names = [...authorGroup[1].matchAll(/"([^"]+)"/g)].map((m) => m[1].toLowerCase());
+  const keyword = authorGroup[2];
+  if (keyword && !a.title.toLowerCase().includes(keyword.toLowerCase())) return false;
+  return names.some((name) => byline.toLowerCase().includes(name));
+};
+
+const filter = (items, { q, from, to, section, byline }) =>
   items.filter((a) => {
     const t = Date.parse(a.publishedAt);
-    if (q && !a.title.toLowerCase().includes(q.toLowerCase())) return false;
+    if (!matchesQuery(a, q, byline?.(a) ?? '')) return false;
     if (section && !section.includes(a.section)) return false;
     if (from !== undefined && t < from) return false;
     if (to !== undefined && t > to) return false;
@@ -147,7 +168,7 @@ const handlers = {
       totalResults: all.length,
       articles: slice.map((a) => ({
         source: { id: null, name: ['BBC News', 'Reuters', 'CNN'][a.title.length % 3] },
-        author: `Reporter ${a.title.length % 5}`,
+        author: SOURCE_BYLINE.newsapi(a),
         title: `${a.title} - ${['BBC News', 'Reuters', 'CNN'][a.title.length % 3]}`,
         description: `Summary for ${a.title}. A reasonably long description so cards have realistic height.`,
         url: `${host('newsapi')}/${slug(a)}`,
@@ -162,7 +183,9 @@ const handlers = {
     if (!p.get('api-key')) return send(res, 401, { message: 'Invalid authentication credentials' });
     const page = Number(p.get('page') ?? 1);
     const pageSize = Number(p.get('page-size') ?? 10);
+    const bylineSearch = p.get('query-fields')?.includes('byline');
     const all = filter(datasets.guardian, {
+      byline: bylineSearch ? SOURCE_BYLINE.guardian : undefined,
       q: p.get('q'),
       from: parseBound(p.get('from-date')),
       to: parseBound(p.get('to-date'), true),
@@ -189,7 +212,7 @@ const handlers = {
           webUrl: `${host('guardian')}/${slug(a)}`,
           fields: {
             trailText: `Summary for ${a.title}.`,
-            byline: `Staff Writer ${a.title.length % 4}`,
+            byline: SOURCE_BYLINE.guardian(a),
           },
         })),
       },
@@ -206,6 +229,7 @@ const handlers = {
       ? [...sectionMatch.matchAll(/"([^"]+)"/g)].map((m) => m[1].toLowerCase())
       : undefined;
     const all = filter(datasets.nyt, {
+      byline: SOURCE_BYLINE.nyt,
       q: p.get('q'),
       from: parseBound(p.get('begin_date')),
       to: parseBound(p.get('end_date'), true),
@@ -221,7 +245,7 @@ const handlers = {
               web_url: `${host('nyt')}/${slug(a)}`,
               headline: { main: a.title },
               abstract: `Summary for ${a.title}.`,
-              byline: { original: `By Desk Writer ${a.title.length % 3}` },
+              byline: { original: SOURCE_BYLINE.nyt(a) },
               section_name: a.section[0].toUpperCase() + a.section.slice(1),
               news_desk: a.section,
               pub_date: a.publishedAt.replace('Z', '+0000'),
