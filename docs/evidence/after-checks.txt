@@ -1,0 +1,119 @@
+$ npx prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+
+$ npm run lint
+
+> news-aggregator@1.0.0 lint
+> eslint .
+
+
+$ npm run typecheck
+
+> news-aggregator@1.0.0 typecheck
+> tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.e2e.json
+
+
+$ npm test
+ ✓ src/shared/hooks/useInfiniteScroll.test.tsx (7 tests) 45ms
+ ✓ src/features/preferences/preferencesStore.test.ts (8 tests) 12ms
+ ✓ src/services/normalize/normalize.test.ts (65 tests) 47ms
+ ✓ src/services/providers/guardianProvider.test.ts (7 tests) 36ms
+ ✓ src/services/providers/newsApiProvider.test.ts (7 tests) 37ms
+ ✓ src/services/providers/nytProvider.test.ts (6 tests) 47ms
+ ✓ src/services/aggregator/newsAggregator.test.ts (18 tests) 381ms
+ ✓ src/features/articles/filters.test.ts (4 tests) 8ms
+ ✓ src/services/http/httpClient.test.ts (6 tests) 35ms
+ ✓ src/features/articles/hooks/useGridColumns.test.ts (6 tests) 27ms
+ ✓ src/services/errors.test.ts (3 tests) 6ms
+ ✓ src/shared/ui/ArticleImage.test.tsx (8 tests) 290ms
+stderr | src/features/feed/FeedPage.test.tsx > FeedPage > shows latest news with a personalise prompt when no preferences are set
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+stderr | src/features/articles/components/ArticleResults.test.tsx > ArticleResults footer > shows the end message when there are no more pages
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/features/articles/components/ArticleResults.test.tsx (4 tests) 327ms
+ ✓ src/features/feed/FeedPage.test.tsx (2 tests) 358ms
+ ✓ src/features/articles/gridLayout.test.ts (7 tests) 9ms
+ ✓ src/features/preferences/authors.test.ts (3 tests) 54ms
+ ✓ src/shared/ui/ErrorBoundary.test.tsx (2 tests) 275ms
+ ✓ src/shared/ui/LinearProgress.test.tsx (2 tests) 232ms
+stderr | src/features/search/SearchPage.test.tsx > SearchPage > renders results for the initial filters read from the URL
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/shared/ui/DateRangePicker.test.tsx (7 tests) 906ms
+ ✓ src/features/search/SearchPage.test.tsx (5 tests) 1506ms
+   ✓ SearchPage > debounces the keyword into the URL and re-queries 542ms
+   ✓ SearchPage > clears all filters 435ms
+
+ Test Files  20 passed (20)
+      Tests  177 passed (177)
+   Start at  21:41:43
+   Duration  7.80s (transform 1.56s, setup 4.72s, collect 11.81s, tests 4.64s, environment 21.13s, prepare 2.01s)
+
+
+$ npm run build
+
+> news-aggregator@1.0.0 build
+> npm run typecheck && vite build
+
+
+> news-aggregator@1.0.0 typecheck
+> tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.e2e.json
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1161 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                            0.74 kB │ gzip:  0.44 kB
+dist/assets/index-B_am--aa.css            26.46 kB │ gzip:  5.47 kB
+dist/assets/MultiSelect-DGnoL8E8.js        1.56 kB │ gzip:  0.65 kB
+dist/assets/FeedPage-XZamOq3R.js           1.74 kB │ gzip:  0.89 kB
+dist/assets/PreferencesPage-BGqB1zsI.js    3.02 kB │ gzip:  1.24 kB
+dist/assets/ArticleResults-BvXj_FZ3.js     8.12 kB │ gzip:  3.22 kB
+dist/assets/usePreferences-DH9O85h4.js     9.37 kB │ gzip:  3.55 kB
+dist/assets/useArticles-BP2glm7e.js       11.56 kB │ gzip:  4.15 kB
+dist/assets/SearchPage-Bs9PvRxe.js       171.19 kB │ gzip: 51.58 kB
+dist/assets/index-CrSbOr8m.js            270.10 kB │ gzip: 82.88 kB
+✓ built in 1.07s
+
+$ npx playwright test
+
+Running 28 tests using 1 worker
+
+  ✓   1 [chromium] › e2e/specs/filters.spec.ts:6:3 › date filter uses local days › "Today" sends the local day boundaries and only returns articles from that local day (851ms)
+  ✓   2 [chromium] › e2e/specs/filters.spec.ts:42:3 › untrusted input › invalid dates in the URL are dropped, not sent upstream (353ms)
+  ✓   3 [chromium] › e2e/specs/filters.spec.ts:53:3 › untrusted input › corrupt persisted preferences fall back to defaults instead of crashing (404ms)
+  ✓   4 [chromium] › e2e/specs/filters.spec.ts:70:3 › untrusted input › unparseable preferences JSON does not break the app (305ms)
+  ✓   5 [chromium] › e2e/specs/filters.spec.ts:78:3 › app shell › routes are code-split and titled (385ms)
+  ✓   6 [chromium] › e2e/specs/filters.spec.ts:94:3 › app shell › unknown routes show a titled not-found page (156ms)
+  ✓   7 [chromium] › e2e/specs/filters.spec.ts:100:3 › app shell › the CSP is not violated by the running app (368ms)
+  ✓   8 [chromium] › e2e/specs/proxy.spec.ts:15:3 › nginx security headers › index.html has all headers and is never cached (14ms)
+  ✓   9 [chromium] › e2e/specs/proxy.spec.ts:24:3 › nginx security headers › hashed assets keep every header and have exactly one immutable Cache-Control (257ms)
+  ✓  10 [chromium] › e2e/specs/proxy.spec.ts:46:3 › nginx security headers › deep links fall back to index.html with no-cache (4ms)
+  ✓  11 [chromium] › e2e/specs/proxy.spec.ts:54:3 › API proxy › forwards allowlisted endpoints and injects the key server-side (8ms)
+  ✓  12 [chromium] › e2e/specs/proxy.spec.ts:64:3 › API proxy › does not forward anything else under /api/ (9ms)
+  ✓  13 [chromium] › e2e/specs/proxy.spec.ts:76:3 › API proxy › only GET is allowed (4ms)
+  ✓  14 [chromium] › e2e/specs/proxy.spec.ts:80:3 › API proxy › responses are cached and stale-on-error (12ms)
+  ✓  15 [chromium] › e2e/specs/proxy.spec.ts:92:3 › API proxy › a burst beyond the per-IP limit gets 429 instead of reaching upstream (10ms)
+  ✓  16 [chromium] › e2e/specs/resilience.spec.ts:4:3 › failing and slow sources › one failing source shows a notice while the others still fill the feed (10.6s)
+  ✓  17 [chromium] › e2e/specs/resilience.spec.ts:26:3 › failing and slow sources › every source failing from the start shows an error with retry, never "all caught up" (269ms)
+  ✓  18 [chromium] › e2e/specs/resilience.spec.ts:41:3 › failing and slow sources › every source failing mid-scroll keeps the feed and offers a footer retry (1.4s)
+  ✓  19 [chromium] › e2e/specs/resilience.spec.ts:64:3 › failing and slow sources › a malformed upstream response shows a friendly message, not a raw validation error (149ms)
+  ✓  20 [chromium] › e2e/specs/resilience.spec.ts:77:3 › failing and slow sources › a rate-limited source is reported by name (203ms)
+  ✓  21 [chromium] › e2e/specs/resilience.spec.ts:86:3 › failing and slow sources › a slow source does not block the others beyond the client timeout (10.5s)
+  ✓  22 [chromium] › e2e/specs/resilience.spec.ts:101:3 › failing and slow sources › changing filters quickly cancels the superseded requests (1.7s)
+  ✓  23 [chromium] › e2e/specs/scroll.spec.ts:4:3 › infinite scroll › scrolling to the end yields one ordered, duplicate-free list and no wasted upstream calls (4.4s)
+  ✓  24 [chromium] › e2e/specs/scroll.spec.ts:30:3 › infinite scroll › stops calling a source once it is exhausted (4.3s)
+  ✓  25 [chromium] › e2e/specs/scroll.spec.ts:50:5 › responsive grid › 1280px wide renders 3 column(s) with only complete rows (240ms)
+  ✓  26 [chromium] › e2e/specs/scroll.spec.ts:50:5 › responsive grid › 800px wide renders 2 column(s) with only complete rows (218ms)
+  ✓  27 [chromium] › e2e/specs/scroll.spec.ts:50:5 › responsive grid › 390px wide renders 1 column(s) with only complete rows (177ms)
+  ✓  28 [chromium] › e2e/specs/scroll.spec.ts:70:3 › responsive grid › resizing across breakpoints keeps the list and re-trims rows (224ms)
+
+  28 passed (39.5s)
+

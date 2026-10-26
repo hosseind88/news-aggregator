@@ -1,0 +1,34 @@
+{
+ "tag": "after",
+ "name": "desktop",
+ "cards": 520,
+ "unique": 520,
+ "orderInversions": 0,
+ "end": "caught-up",
+ "alerts": [],
+ "upstreamRequests": 32,
+ "upstreamByStatus": {
+  "newsapi:200": 5,
+  "guardian:200": 15,
+  "nyt:200": 12
+ },
+ "browserApiRequests": 32,
+ "scrollSteps": 21
+}
+{
+ "tag": "after",
+ "name": "mobile",
+ "cards": 520,
+ "unique": 520,
+ "orderInversions": 0,
+ "end": "caught-up",
+ "alerts": [],
+ "upstreamRequests": 32,
+ "upstreamByStatus": {
+  "newsapi:200": 5,
+  "nyt:200": 12,
+  "guardian:200": 15
+ },
+ "browserApiRequests": 32,
+ "scrollSteps": 21
+}
