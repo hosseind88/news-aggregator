@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
+import { format } from 'date-fns';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import type { NewsService } from '@/domain/news';
@@ -29,6 +30,8 @@ const setup = (initialUrl = '/search') => {
   );
   return { search };
 };
+
+const todayIso = format(new Date(), 'yyyy-MM-dd');
 
 describe('SearchPage', () => {
   it('renders results for the initial filters read from the URL', async () => {
@@ -72,20 +75,21 @@ describe('SearchPage', () => {
 
     await user.click(screen.getByRole('checkbox', { name: 'Technology' }));
     await user.click(screen.getByRole('checkbox', { name: 'The Guardian' }));
-    await user.type(screen.getByLabelText('From'), '2024-05-01');
+    await user.click(screen.getByRole('button', { name: /Date range/ }));
+    await user.click(screen.getByRole('button', { name: 'Today' }));
 
     const url = screen.getByTestId('search');
     await waitFor(() => {
       expect(url).toHaveTextContent('categories=technology');
       expect(url).toHaveTextContent('sources=guardian');
-      expect(url).toHaveTextContent('from=2024-05-01');
+      expect(url).toHaveTextContent(`from=${todayIso}`);
     });
     await waitFor(() =>
       expect(search).toHaveBeenLastCalledWith(
         expect.objectContaining({
           categories: ['technology'],
           sources: ['guardian'],
-          from: '2024-05-01',
+          from: todayIso,
         }),
       ),
     );
