@@ -11,7 +11,7 @@ interface Props {
 }
 
 /** Gradient tint per source, light and dark. */
-export const SOURCE_TINTS: Record<SourceId, string> = {
+const SOURCE_TINTS: Record<SourceId, string> = {
   guardian:
     'from-blue-100 to-sky-200 text-blue-900 dark:from-blue-950 dark:to-sky-900 dark:text-blue-200',
   nyt: 'from-slate-200 to-zinc-300 text-slate-800 dark:from-slate-900 dark:to-zinc-800 dark:text-slate-300',

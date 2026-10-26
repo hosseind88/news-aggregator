@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ArticleImage, SOURCE_TINTS } from './ArticleImage';
+import { ArticleImage } from './ArticleImage';
 
 const URL_OK = 'https://img.example.com/a.jpg';
 
@@ -65,6 +65,6 @@ describe('ArticleImage', () => {
       return cls;
     });
     expect(new Set(classes).size).toBe(3);
-    expect(classes[0]).toContain(SOURCE_TINTS.guardian);
+    expect(classes[0]).toContain('blue');
   });
 });
