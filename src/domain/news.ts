@@ -21,12 +21,17 @@ export interface Article {
   description?: string;
   url: string;
   imageUrl?: string;
-  author?: string;
+  /** Canonical, title-cased person names; empty when the byline is missing or not a person. */
+  authors: string[];
+  /** Which API the article came from. */
   source: SourceId;
-  /** Publisher display name (for NewsAPI this is the originating outlet, e.g. "BBC News"). */
+  /** Display name of that API's brand (always `SOURCE_LABELS[source]`). */
   sourceName: string;
-  category?: string;
-  /** ISO-8601 timestamp. */
+  /** Underlying outlet when the API aggregates others (NewsAPI: "BBC News"); otherwise undefined. */
+  publisher?: string;
+  /** Mapped onto our own taxonomy; undefined when the raw section has no equivalent. */
+  category?: Category;
+  /** ISO-8601 UTC, e.g. `2024-05-02T10:00:00.000Z`. */
   publishedAt: string;
 }
 

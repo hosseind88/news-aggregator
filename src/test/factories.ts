@@ -4,9 +4,10 @@ export const makeArticle = (overrides: Partial<Article> = {}): Article => ({
   id: 'a-1',
   title: 'Default headline',
   url: 'https://example.com/default',
+  authors: [],
   source: 'newsapi',
   sourceName: 'Example',
-  publishedAt: '2024-05-01T10:00:00Z',
+  publishedAt: '2024-05-01T10:00:00.000Z',
   ...overrides,
 });
 
