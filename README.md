@@ -1,6 +1,6 @@
 # Newsroom — News Aggregator
 
-A React + TypeScript single-page app that merges articles from **NewsAPI.org**, **The Guardian** and **The New York Times** into one searchable, filterable and personalisable feed. Built for the innoscripta frontend take-home challenge.
+A React + TypeScript single-page app that merges articles from **NewsAPI.org**, **The Guardian** and **The New York Times** into one searchable, filterable and personalisable feed.
 
 ![CI](https://github.com/hosseind88/news-aggregator/actions/workflows/ci.yml/badge.svg)
 
