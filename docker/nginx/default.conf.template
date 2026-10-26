@@ -1,0 +1,67 @@
+# Rendered by envsubst at container start. Only *_KEY variables are substituted;
+# nginx's own $variables are left untouched (see NGINX_ENVSUBST_FILTER in the Dockerfile).
+#
+# The browser only calls /api/<source>/...; nginx forwards to the real API and adds the
+# secret key here, so keys never ship in the JS bundle and CORS/origin limits don't apply.
+
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    # ---- API proxies (GET only) ----
+
+    # NewsAPI.org: key sent as a header.
+    location /api/newsapi/ {
+        limit_except GET { deny all; }
+        rewrite ^/api/newsapi/(.*)$ /v2/$1 break;
+        proxy_pass https://newsapi.org;
+        proxy_ssl_server_name on;
+        proxy_set_header Host newsapi.org;
+        proxy_set_header X-Api-Key "${NEWSAPI_KEY}";
+        proxy_set_header Cookie "";
+    }
+
+    # (`set` must precede `rewrite ... break`, which ends rewrite-phase directives.)
+    # The Guardian Open Platform: key sent as `api-key` query param.
+    location /api/guardian/ {
+        limit_except GET { deny all; }
+        set $args "$args&api-key=${GUARDIAN_KEY}";
+        rewrite ^/api/guardian/(.*)$ /$1 break;
+        proxy_pass https://content.guardianapis.com;
+        proxy_ssl_server_name on;
+        proxy_set_header Host content.guardianapis.com;
+        proxy_set_header Cookie "";
+    }
+
+    # NYT Article Search: key sent as `api-key` query param.
+    location /api/nyt/ {
+        limit_except GET { deny all; }
+        set $args "$args&api-key=${NYT_KEY}";
+        rewrite ^/api/nyt/(.*)$ /svc/search/v2/$1 break;
+        proxy_pass https://api.nytimes.com;
+        proxy_ssl_server_name on;
+        proxy_set_header Host api.nytimes.com;
+        proxy_set_header Cookie "";
+    }
+
+    # Hashed build assets are immutable.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # SPA fallback: client-side routes resolve to index.html.
+    location / {
+        try_files $uri /index.html;
+    }
+}

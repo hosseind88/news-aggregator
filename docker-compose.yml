@@ -1,0 +1,12 @@
+services:
+  web:
+    build: .
+    image: news-aggregator
+    ports:
+      - '3000:80'
+    # Compose reads ./.env automatically; keys are passed to nginx at runtime.
+    environment:
+      NEWSAPI_KEY: ${NEWSAPI_KEY:-}
+      GUARDIAN_KEY: ${GUARDIAN_KEY:-}
+      NYT_KEY: ${NYT_KEY:-}
+    restart: unless-stopped
