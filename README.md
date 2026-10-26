@@ -72,6 +72,22 @@ Also: loading skeletons, empty and error states, "Load more" pagination, a non-b
 - **One adapter per API** (`src/services/providers/*Provider.ts`). Each maps our filters (keyword, `from`/`to`, categories, page) to that API's quirks — e.g. NYT wants `YYYYMMDD` dates, a 0-based page and a `section_name` facet; the Guardian uses `from-date`/`section=a|b`; NewsAPI needs `everything` for date ranges but `top-headlines` for categories. It then validates the response with Zod and maps it to `Article`.
 - **`NewsAggregator`** takes the providers through its constructor. It queries the selected sources in parallel with `Promise.allSettled`, skips sources that can't serve the requested categories, merges, **de-duplicates** (canonical URL or normalised title), sorts newest-first and returns `{ articles, failures }`. A failing source never breaks the page — failures render as a small amber notice, and only if _every_ source fails is a full error state shown.
 
+### Data normalization
+
+The three APIs disagree on almost everything, so adapters never build an `Article` by hand. They extract raw fields and pass them to **`createArticle`** (`src/services/normalize/`), the single place where raw data becomes the domain model. It is built from small pure functions, each unit-tested against edge cases seen in the live APIs:
+
+| Concern          | Rule                                                                                                                                                                                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Category**     | `normalizeCategory` maps Guardian `sectionId`/`sectionName`, NYT `section_name`/`news_desk` and NewsAPI's requested category onto our `Category` union. Unknown sections (food, opinion, …) become `undefined`, never a raw string. Labels come from `CATEGORY_LABELS`.   |
+| **Authors**      | `normalizeAuthors` → `authors: string[]`: strips "By ", splits "A and B" / "A, B" / "A & B", drops URLs, emails, "[Removed]", organisations and the publisher's own name, title-cases and de-duplicates. Preferences/filters compare with `authorKey` (case-insensitive). |
+| **Source**       | `source` is the stable `SourceId`; `sourceName` its brand label. For NewsAPI the originating outlet ("BBC News") is kept separately in `publisher`, and the ` - BBC News` title suffix is stripped.                                                                       |
+| **Dates**        | `normalizeDate` → ISO-8601 UTC (handles NYT's `+0000`, offsets, `Z`). Sorting and the date-range filter (`isWithinDateRange`, inclusive UTC days) use only the normalized value.                                                                                          |
+| **Text**         | `cleanText` decodes HTML entities, strips tags, collapses whitespace, drops placeholders and caps descriptions at 240 characters on a word boundary.                                                                                                                      |
+| **URLs**         | `normalizeUrl` keeps absolute https only (upgrades http, resolves NYT relative image paths, rejects `javascript:`/`data:`).                                                                                                                                               |
+| **IDs / dedupe** | `stableId` is derived from the canonical URL. The aggregator de-dupes by `canonicalUrl` (no scheme, `www`, query, hash or trailing slash) and `titleKey` (case/punctuation-insensitive).                                                                                  |
+
+Records missing a title, https URL or valid date are dropped by `createArticle` rather than shown half-broken.
+
 ### Adding a new source (open/closed)
 
 1. Create `src/services/providers/bbcProvider.ts` implementing `NewsProvider`.
@@ -82,15 +98,15 @@ The aggregator, hooks, pages and filters need **no** changes — the source filt
 
 ### How the principles show up
 
-| Principle                 | Examples                                                                                                                                                                                                                                                                |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **S**ingle responsibility | Adapters only translate; the aggregator only orchestrates; `useArticles` only fetches; `FilterPanel` only renders; `useSearchFilters` only syncs URL ⇄ filters; the store only holds preferences.                                                                       |
-| **O**pen/closed           | New source = new adapter + registration (above).                                                                                                                                                                                                                        |
-| **L**iskov                | Any `NewsProvider` is interchangeable inside the aggregator; tests use fake providers.                                                                                                                                                                                  |
-| **I**nterface segregation | Small interfaces: `HttpClient` (one method), `NewsService` (what the UI needs), `NewsProvider`.                                                                                                                                                                         |
-| **D**ependency inversion  | `NewsAggregator` depends on `NewsProvider[]`, adapters depend on `HttpClient`, and the UI depends on `NewsService` via context — all injected, so tests swap in fakes without mocking modules.                                                                          |
-| **DRY**                   | One `ArticleResults` renders every query state for both Feed and Search; shared `MultiSelect`, `TextInput`, `EmptyState`, `ErrorState`; one HTTP client; shared Zod helpers (`parseItems`, `clean`, `hashId`); one proxy contract (`/api/<source>/…`) for dev and prod. |
-| **KISS**                  | No component library, no global state for server data, native `<input type="date">`, checkbox-based `MultiSelect` (accessible by default), plain `fetch`.                                                                                                               |
+| Principle                 | Examples                                                                                                                                                                                                                                                                                                                |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **S**ingle responsibility | Adapters only translate; the aggregator only orchestrates; `useArticles` only fetches; `FilterPanel` only renders; `useSearchFilters` only syncs URL ⇄ filters; the store only holds preferences.                                                                                                                       |
+| **O**pen/closed           | New source = new adapter + registration (above).                                                                                                                                                                                                                                                                        |
+| **L**iskov                | Any `NewsProvider` is interchangeable inside the aggregator; tests use fake providers.                                                                                                                                                                                                                                  |
+| **I**nterface segregation | Small interfaces: `HttpClient` (one method), `NewsService` (what the UI needs), `NewsProvider`.                                                                                                                                                                                                                         |
+| **D**ependency inversion  | `NewsAggregator` depends on `NewsProvider[]`, adapters depend on `HttpClient`, and the UI depends on `NewsService` via context — all injected, so tests swap in fakes without mocking modules.                                                                                                                          |
+| **DRY**                   | One `ArticleResults` renders every query state for both Feed and Search; shared `MultiSelect`, `TextInput`, `EmptyState`, `ErrorState`; one HTTP client; one normalization module used by every adapter (`createArticle`), a shared Zod helper (`parseItems`); one proxy contract (`/api/<source>/…`) for dev and prod. |
+| **KISS**                  | No component library, no global state for server data, native `<input type="date">`, checkbox-based `MultiSelect` (accessible by default), plain `fetch`.                                                                                                                                                               |
 
 ## API keys
 
@@ -179,6 +195,7 @@ src/
 ├── services/
 │   ├── http/               # HttpClient + fetch implementation, error normalisation
 │   ├── providers/          # NewsApi / Guardian / Nyt adapters + registry (+ fixtures, tests)
+│   ├── normalize/          # pure normalizers: category, authors, dates, text, URLs, createArticle
 │   ├── aggregator/         # NewsAggregator, de-dupe/sort helpers
 │   └── NewsServiceContext  # DI of NewsService into React
 ├── features/
