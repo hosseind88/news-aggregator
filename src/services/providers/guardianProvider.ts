@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import type { Article, Category, NewsProvider, SearchParams } from '@/domain/news';
+import type { Article, Category, NewsProvider, ProviderRequest, SourcePage } from '@/domain/news';
 import type { HttpClient } from '@/services/http/httpClient';
 import { createArticle } from '@/services/normalize';
-import { parseItems, supportedCategoriesOf } from './shared';
+import { dayEndInstant, dayStartInstant, parseItems, supportedCategoriesOf } from './shared';
 
 const PAGE_SIZE = 20;
 
@@ -36,7 +36,10 @@ const resultSchema = z.object({
 type RawResult = z.infer<typeof resultSchema>;
 
 const responseSchema = z.object({
-  response: z.object({ results: z.array(z.unknown()).default([]) }),
+  response: z.object({
+    pages: z.number().optional(),
+    results: z.array(z.unknown()).default([]),
+  }),
 });
 
 export const mapGuardianResult = (raw: RawResult): Article | undefined =>
@@ -58,20 +61,34 @@ export class GuardianProvider implements NewsProvider {
 
   constructor(private readonly http: HttpClient) {}
 
-  async search({ keyword, from, to, categories = [], page = 1 }: SearchParams): Promise<Article[]> {
-    const payload = await this.http.getJson('/api/guardian/search', {
-      q: keyword,
-      'from-date': from,
-      'to-date': to,
-      section: categories.map((category) => SECTION_MAP[category]).join('|') || undefined,
-      'order-by': 'newest',
-      'show-fields': 'thumbnail,trailText,byline',
-      'page-size': PAGE_SIZE,
-      page,
-    });
-    const { response } = responseSchema.parse(payload);
-    return parseItems(resultSchema, response.results).flatMap(
-      (item) => mapGuardianResult(item) ?? [],
+  async search({
+    keyword,
+    from,
+    to,
+    categories = [],
+    page,
+    signal,
+  }: ProviderRequest): Promise<SourcePage> {
+    const payload = await this.http.getJson(
+      '/api/guardian/search',
+      {
+        q: keyword,
+        'from-date': dayStartInstant(from),
+        'to-date': dayEndInstant(to),
+        section: categories.map((category) => SECTION_MAP[category]).join('|') || undefined,
+        'order-by': 'newest',
+        'show-fields': 'thumbnail,trailText,byline',
+        'page-size': PAGE_SIZE,
+        page,
+      },
+      { signal },
     );
+    const { response } = responseSchema.parse(payload);
+    return {
+      articles: parseItems(resultSchema, response.results).flatMap(
+        (item) => mapGuardianResult(item) ?? [],
+      ),
+      hasMore: response.results.length > 0 && page < (response.pages ?? page),
+    };
   }
 }

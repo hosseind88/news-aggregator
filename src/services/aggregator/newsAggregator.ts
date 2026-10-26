@@ -1,21 +1,39 @@
 import type {
   AggregatedResult,
+  Article,
+  AggregatorCursor,
   NewsProvider,
   NewsService,
+  SearchOptions,
   SearchParams,
+  SourceCursor,
   SourceFailure,
   SourceId,
 } from '@/domain/news';
-import { isWithinDateRange } from '@/services/normalize';
-import { dedupeArticles, sortByNewest } from './dedupe';
+import { AllSourcesFailedError, SourceExhaustedError } from '@/services/errors';
+import { canonicalUrl, isWithinDateRange, titleKey } from '@/services/normalize';
+import { compareNewest, dedupeArticles } from './dedupe';
+
+export const ARTICLES_PER_PAGE = 24;
+/** Upper bound on upstream round-trips needed to fill one page. */
+const MAX_ROUNDS = 8;
 
 const errorMessage = (reason: unknown): string =>
   reason instanceof Error ? reason.message : 'Unknown error';
 
+const time = (article: Article) => Date.parse(article.publishedAt);
+
 /**
- * Fans a search out to the selected providers in parallel and merges the results.
- * Depends only on the `NewsProvider` abstraction; concrete adapters are injected.
- * A provider that rejects is reported in `failures` and never breaks the others.
+ * Fans a search out to the selected providers and merges them into one newest-first feed.
+ *
+ * Pagination is a k-way merge over per-source cursors, not "page N of every source":
+ * each source keeps its own page position plus a buffer of fetched-but-unshown articles.
+ * An article is only emitted once no active source can still hold anything newer
+ * (the "watermark"), so the feed is globally ordered across pages, and a source that runs
+ * out of results (or hits its plan cap) is simply no longer called.
+ *
+ * The cursor is immutable and JSON-serialisable: retrying a failed page re-runs from the
+ * same cursor. Depends only on the `NewsProvider` abstraction; adapters are injected.
  */
 export class NewsAggregator implements NewsService {
   constructor(private readonly registered: readonly NewsProvider[]) {}
@@ -24,33 +42,124 @@ export class NewsAggregator implements NewsService {
     return this.registered.map(({ id, name }) => ({ id, name }));
   }
 
-  async search({
-    sources,
-    ...params
-  }: SearchParams & { sources?: SourceId[] }): Promise<AggregatedResult> {
-    const selected = this.registered
-      .filter((provider) => !sources?.length || sources.includes(provider.id))
-      .filter((provider) => this.canServe(provider, params));
-
-    const settled = await Promise.allSettled(selected.map((provider) => provider.search(params)));
-
+  async search(
+    { sources, ...params }: SearchParams & { sources?: SourceId[] },
+    { cursor, signal }: SearchOptions = {},
+  ): Promise<AggregatedResult> {
+    const state = this.start(cursor, sources, params);
     const failures: SourceFailure[] = [];
-    const collected = settled.flatMap((result, index) => {
-      if (result.status === 'fulfilled') return result.value;
-      const provider = selected[index]!;
-      failures.push({
-        source: provider.id,
-        sourceName: provider.name,
-        message: errorMessage(result.reason),
-      });
-      return [];
-    });
+    const byId = new Map(this.registered.map((provider) => [provider.id, provider]));
 
-    // Every source has its own idea of date bounds; enforce the range on normalised UTC timestamps.
-    const inRange = collected.filter((a) =>
-      isWithinDateRange(a.publishedAt, params.from, params.to),
+    const active = () => Object.entries(state).filter(([, c]) => c.status === 'active');
+
+    const fetchFrom = async (ids: SourceId[]) => {
+      const settled = await Promise.allSettled(
+        ids.map((id) => {
+          const sourceCursor = state[id]!;
+          return byId.get(id)!.search({ ...params, page: sourceCursor.page, signal });
+        }),
+      );
+      signal?.throwIfAborted();
+      settled.forEach((result, index) => {
+        const id = ids[index]!;
+        const sourceCursor = state[id]!;
+        if (result.status === 'fulfilled') {
+          const inRange = result.value.articles.filter((a) =>
+            isWithinDateRange(a.publishedAt, params.from, params.to),
+          );
+          sourceCursor.buffer = [...sourceCursor.buffer, ...inRange].sort(compareNewest);
+          sourceCursor.page += 1;
+          sourceCursor.status = result.value.hasMore ? 'active' : 'done';
+        } else if (result.reason instanceof SourceExhaustedError) {
+          sourceCursor.status = 'done';
+        } else {
+          sourceCursor.status = 'failed';
+          failures.push({
+            source: id,
+            sourceName: byId.get(id)!.name,
+            message: errorMessage(result.reason),
+          });
+        }
+      });
+    };
+
+    let candidates: Article[] = [];
+    for (let round = 0; round < MAX_ROUNDS; round += 1) {
+      const live = active().map(([id]) => id as SourceId);
+      const watermark = Math.max(
+        -Infinity,
+        ...live.map((id) => {
+          const oldest = state[id]!.buffer.at(-1);
+          return oldest ? time(oldest) : Infinity;
+        }),
+      );
+
+      const buffered = Object.values(state).flatMap((c) => c.buffer);
+      candidates = dedupeArticles(
+        buffered.filter((a) => !live.length || time(a) >= watermark).sort(compareNewest),
+      );
+      if (candidates.length >= ARTICLES_PER_PAGE || !live.length) break;
+
+      // Only the sources holding the watermark can lift it; the rest already reach further back.
+      const limiting = live.filter((id) => {
+        const oldest = state[id]!.buffer.at(-1);
+        return !oldest || time(oldest) === watermark;
+      });
+      await fetchFrom(limiting);
+    }
+
+    // Round budget spent with every remaining source still stuck: show what we have rather than nothing.
+    if (!candidates.length) {
+      candidates = dedupeArticles(
+        Object.values(state)
+          .flatMap((c) => c.buffer)
+          .sort(compareNewest),
+      );
+    }
+
+    const page = candidates.slice(0, ARTICLES_PER_PAGE);
+    this.consume(state, page);
+
+    const selected = Object.values(state);
+    if (!page.length && failures.length && selected.every((c) => c.status === 'failed')) {
+      throw new AllSourcesFailedError(failures);
+    }
+
+    const hasRemaining = selected.some((c) => c.status === 'active' || c.buffer.length > 0);
+    return { articles: page, failures, nextCursor: hasRemaining ? state : undefined };
+  }
+
+  /** Copies (or creates) the per-source state so the caller's cursor is never mutated. */
+  private start(
+    cursor: AggregatorCursor | undefined,
+    sources: SourceId[] | undefined,
+    params: SearchParams,
+  ): Record<string, SourceCursor> {
+    if (cursor) {
+      return Object.fromEntries(
+        Object.entries(cursor).map(([id, c]) => [id, { ...c, buffer: [...c.buffer] }]),
+      );
+    }
+    return Object.fromEntries(
+      this.registered
+        .filter((provider) => !sources?.length || sources.includes(provider.id))
+        .filter((provider) => this.canServe(provider, params))
+        .map((provider): [string, SourceCursor] => [
+          provider.id,
+          { page: 1, buffer: [], status: 'active' },
+        ]),
     );
-    return { articles: sortByNewest(dedupeArticles(inRange)), failures };
+  }
+
+  /** Drops emitted articles (and their cross-source duplicates) from the buffers. */
+  private consume(state: Record<string, SourceCursor>, emitted: Article[]) {
+    const urls = new Set(emitted.map((a) => canonicalUrl(a.url)));
+    const titles = new Set(emitted.map((a) => titleKey(a.title)));
+    for (const sourceCursor of Object.values(state)) {
+      sourceCursor.buffer = sourceCursor.buffer.filter(
+        (a) => !urls.has(canonicalUrl(a.url)) && !titles.has(titleKey(a.title)),
+      );
+    }
   }
 
   /** A provider with no overlap with the requested categories has nothing to offer. */

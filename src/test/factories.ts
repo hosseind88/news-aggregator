@@ -16,6 +16,6 @@ export const makeProvider = (
 ): NewsProvider => ({
   name: overrides.id,
   supportedCategories: ['business', 'technology'],
-  search: async () => [],
+  search: async () => ({ articles: [], hasMore: false }),
   ...overrides,
 });

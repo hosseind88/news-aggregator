@@ -35,13 +35,24 @@ export interface Article {
   publishedAt: string;
 }
 
-/** Provider-agnostic filters. Dates are `YYYY-MM-DD`. */
+/** Provider-agnostic filters. `from`/`to` are inclusive calendar days (`YYYY-MM-DD`) in the user's local time zone. */
 export interface SearchParams {
   keyword?: string;
   from?: string;
   to?: string;
   categories?: Category[];
-  page?: number;
+}
+
+/** One page request to a single source. `page` is 1-based for every provider. */
+export interface ProviderRequest extends SearchParams {
+  page: number;
+  signal?: AbortSignal;
+}
+
+export interface SourcePage {
+  articles: Article[];
+  /** Whether the source can serve a further page for the same filters. */
+  hasMore: boolean;
 }
 
 export interface NewsProvider {
@@ -49,7 +60,7 @@ export interface NewsProvider {
   readonly name: string;
   /** Categories this source can filter on; others are skipped by the aggregator. */
   readonly supportedCategories: readonly Category[];
-  search(params: SearchParams): Promise<Article[]>;
+  search(request: ProviderRequest): Promise<SourcePage>;
 }
 
 export interface SourceFailure {
@@ -58,14 +69,38 @@ export interface SourceFailure {
   message: string;
 }
 
+/**
+ * Where one source is in a paginated search. `buffer` holds fetched articles not yet shown
+ * (newest first). `failed` sources are not called again for the same search.
+ */
+export interface SourceCursor {
+  page: number;
+  buffer: Article[];
+  status: 'active' | 'done' | 'failed';
+}
+
+/** Opaque, JSON-serialisable position in an aggregated search; pass it back to fetch the next page. */
+export type AggregatorCursor = Partial<Record<SourceId, SourceCursor>>;
+
 export interface AggregatedResult {
   articles: Article[];
+  /** Sources that failed while producing this page. */
   failures: SourceFailure[];
+  /** Undefined once every source is exhausted. */
+  nextCursor?: AggregatorCursor;
+}
+
+export interface SearchOptions {
+  cursor?: AggregatorCursor;
+  signal?: AbortSignal;
 }
 
 export interface NewsService {
   readonly providers: readonly Pick<NewsProvider, 'id' | 'name'>[];
-  search(params: SearchParams & { sources?: SourceId[] }): Promise<AggregatedResult>;
+  search(
+    params: SearchParams & { sources?: SourceId[] },
+    options?: SearchOptions,
+  ): Promise<AggregatedResult>;
 }
 
 export const CATEGORY_LABELS: Record<Category, string> = {

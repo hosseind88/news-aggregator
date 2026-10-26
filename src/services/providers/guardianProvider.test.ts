@@ -7,10 +7,12 @@ const setup = () => {
   return { getJson, provider: new GuardianProvider({ getJson }) };
 };
 
+const REQ = { page: 1 };
+
 describe('GuardianProvider', () => {
   it('maps results into unified articles and skips malformed ones', async () => {
     const { provider } = setup();
-    const articles = await provider.search({});
+    const { articles } = await provider.search(REQ);
 
     expect(articles).toHaveLength(4);
     expect(articles[0]).toMatchObject({
@@ -29,7 +31,7 @@ describe('GuardianProvider', () => {
 
   it('maps sections to our categories and leaves unknown ones undefined', async () => {
     const { provider } = setup();
-    const articles = await provider.search({});
+    const { articles } = await provider.search(REQ);
 
     expect(articles.map((a) => a.category)).toEqual([
       'business',
@@ -42,7 +44,7 @@ describe('GuardianProvider', () => {
 
   it('converts offset timestamps to UTC', async () => {
     const { provider } = setup();
-    const film = (await provider.search({}))[2];
+    const film = (await provider.search(REQ)).articles[2];
     expect(film?.publishedAt).toBe('2024-04-30T11:00:00.000Z');
   });
 
@@ -60,17 +62,39 @@ describe('GuardianProvider', () => {
       '/api/guardian/search',
       expect.objectContaining({
         q: 'markets',
-        'from-date': '2024-05-01',
-        'to-date': '2024-05-03',
+        'from-date': '2024-05-01T00:00:00.000Z',
+        'to-date': '2024-05-03T23:59:59.999Z',
         section: 'business|sport',
         page: 3,
       }),
+      expect.anything(),
     );
   });
 
   it('omits the section filter when no category is selected', async () => {
     const { provider, getJson } = setup();
-    await provider.search({});
+    await provider.search(REQ);
     expect(getJson.mock.calls[0]?.[1]).toMatchObject({ section: undefined });
+  });
+
+  it('reports whether further pages exist from the response envelope', async () => {
+    const page = (currentPage: number, pages: number) => ({
+      response: { currentPage, pages, results: fixture.response.results },
+    });
+    const getJson = vi
+      .fn<HttpClient['getJson']>()
+      .mockResolvedValueOnce(page(1, 2))
+      .mockResolvedValueOnce(page(2, 2));
+    const provider = new GuardianProvider({ getJson });
+
+    expect((await provider.search({ page: 1 })).hasMore).toBe(true);
+    expect((await provider.search({ page: 2 })).hasMore).toBe(false);
+  });
+
+  it('forwards the abort signal to the HTTP client', async () => {
+    const { provider, getJson } = setup();
+    const { signal } = new AbortController();
+    await provider.search({ page: 1, signal });
+    expect(getJson.mock.calls[0]?.[2]).toEqual({ signal });
   });
 });

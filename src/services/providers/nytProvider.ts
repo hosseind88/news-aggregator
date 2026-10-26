@@ -1,8 +1,13 @@
 import { z } from 'zod';
-import type { Article, Category, NewsProvider, SearchParams } from '@/domain/news';
+import type { Article, Category, NewsProvider, ProviderRequest, SourcePage } from '@/domain/news';
+import { endOfLocalDay, startOfLocalDay, toUtcDayStamp } from '@/services/normalize';
 import type { HttpClient } from '@/services/http/httpClient';
 import { createArticle } from '@/services/normalize';
 import { parseItems, supportedCategoriesOf } from './shared';
+
+const PAGE_SIZE = 10;
+/** NYT serves at most 100 pages (1000 results) per query. */
+const RESULT_CAP = 1000;
 
 const IMAGE_HOST = 'https://www.nytimes.com/';
 
@@ -44,6 +49,7 @@ const responseSchema = z.object({
       .array(z.unknown())
       .nullish()
       .transform((docs) => docs ?? []),
+    meta: z.object({ hits: z.number().optional() }).nullish(),
   }),
 });
 
@@ -54,8 +60,12 @@ const pickImagePath = (multimedia: RawDoc['multimedia']): string | undefined => 
     : multimedia.default?.url;
 };
 
-/** NYT dates are `YYYYMMDD`. */
-const toNytDate = (date?: string): string | undefined => date?.replaceAll('-', '');
+/**
+ * NYT only filters on whole UTC days (`YYYYMMDD`). Widen the user's local-day range to the UTC
+ * days it touches; the aggregator trims the edges using exact timestamps.
+ */
+const utcDayStamp = (instant: Date | undefined): string | undefined =>
+  instant && toUtcDayStamp(instant);
 
 export const mapNytDoc = (raw: RawDoc): Article | undefined =>
   createArticle({
@@ -77,17 +87,32 @@ export class NytProvider implements NewsProvider {
 
   constructor(private readonly http: HttpClient) {}
 
-  async search({ keyword, from, to, categories = [], page = 1 }: SearchParams): Promise<Article[]> {
+  async search({
+    keyword,
+    from,
+    to,
+    categories = [],
+    page,
+    signal,
+  }: ProviderRequest): Promise<SourcePage> {
     const sections = categories.map((category) => `"${SECTION_MAP[category]}"`).join(' ');
-    const payload = await this.http.getJson('/api/nyt/articlesearch.json', {
-      q: keyword,
-      begin_date: toNytDate(from),
-      end_date: toNytDate(to),
-      fq: sections ? `section_name:(${sections})` : undefined,
-      sort: 'newest',
-      page: page - 1, // NYT pages are 0-based
-    });
+    const payload = await this.http.getJson(
+      '/api/nyt/articlesearch.json',
+      {
+        q: keyword,
+        begin_date: utcDayStamp(startOfLocalDay(from)),
+        end_date: utcDayStamp(endOfLocalDay(to)),
+        fq: sections ? `section_name:(${sections})` : undefined,
+        sort: 'newest',
+        page: page - 1, // NYT pages are 0-based
+      },
+      { signal },
+    );
     const { response } = responseSchema.parse(payload);
-    return parseItems(docSchema, response.docs).flatMap((item) => mapNytDoc(item) ?? []);
+    const reachable = Math.min(response.meta?.hits ?? Infinity, RESULT_CAP);
+    return {
+      articles: parseItems(docSchema, response.docs).flatMap((item) => mapNytDoc(item) ?? []),
+      hasMore: response.docs.length > 0 && page * PAGE_SIZE < reachable,
+    };
   }
 }

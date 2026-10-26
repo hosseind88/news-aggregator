@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
 import type { Article } from '@/domain/news';
+import { describeError } from '@/services/errors';
 import { useInfiniteScroll } from '@/shared/hooks/useInfiniteScroll';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { ErrorState } from '@/shared/ui/ErrorState';
@@ -66,8 +67,9 @@ export function ArticleResults({
     );
   }
 
-  if (isError) {
-    return <ErrorState message={error.message} onRetry={() => void query.refetch()} />;
+  // A failed *next* page keeps the loaded feed on screen; the footer offers the retry.
+  if (isError && !query.data) {
+    return <ErrorState message={describeError(error)} onRetry={() => void query.refetch()} />;
   }
 
   if (query.articles.length === 0 && failures.length > 0) {

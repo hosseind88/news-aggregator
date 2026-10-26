@@ -15,5 +15,8 @@ export const dedupeArticles = (articles: Article[]): Article[] => {
   });
 };
 
-export const sortByNewest = (articles: Article[]): Article[] =>
-  [...articles].sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+/** Newest first; equal timestamps fall back to id so the order is fully deterministic. */
+export const compareNewest = (a: Article, b: Article): number =>
+  Date.parse(b.publishedAt) - Date.parse(a.publishedAt) || a.id.localeCompare(b.id);
+
+export const sortByNewest = (articles: Article[]): Article[] => [...articles].sort(compareNewest);

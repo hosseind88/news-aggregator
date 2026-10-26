@@ -1,7 +1,8 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CATEGORIES, SOURCE_IDS, type Category, type SourceId } from '@/domain/news';
-import type { ArticleFilters } from '@/features/articles/hooks/useArticles';
+import type { ArticleFilters } from '@/features/articles/filters';
+import { isValidDay } from '@/services/normalize';
 
 const isOneOf =
   <T extends string>(allowed: readonly T[]) =>
@@ -10,6 +11,9 @@ const isOneOf =
 
 const parseList = <T extends string>(raw: string | null, allowed: readonly T[]): T[] =>
   (raw?.split(',') ?? []).filter(isOneOf(allowed));
+
+const parseDay = (raw: string | null) =>
+  isValidDay(raw ?? undefined) ? (raw ?? undefined) : undefined;
 
 const toParam = (value: unknown): string | undefined => {
   if (Array.isArray(value)) return value.length ? value.join(',') : undefined;
@@ -23,8 +27,8 @@ export function useSearchFilters() {
   const filters = useMemo<ArticleFilters>(
     () => ({
       keyword: params.get('q') ?? undefined,
-      from: params.get('from') ?? undefined,
-      to: params.get('to') ?? undefined,
+      from: parseDay(params.get('from')),
+      to: parseDay(params.get('to')),
       categories: parseList<Category>(params.get('categories'), CATEGORIES),
       sources: parseList<SourceId>(params.get('sources'), SOURCE_IDS),
     }),

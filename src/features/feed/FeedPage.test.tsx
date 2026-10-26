@@ -43,7 +43,10 @@ describe('FeedPage', () => {
       'href',
       '/preferences',
     );
-    expect(search).toHaveBeenCalledWith(expect.objectContaining({ sources: undefined }));
+    expect(search).toHaveBeenCalledWith(
+      expect.objectContaining({ sources: undefined }),
+      expect.anything(),
+    );
   });
 
   it('queries with saved preferences and puts followed authors first', async () => {
@@ -57,6 +60,7 @@ describe('FeedPage', () => {
     expect(await screen.findByRole('heading', { name: 'My Feed' })).toBeInTheDocument();
     expect(search).toHaveBeenCalledWith(
       expect.objectContaining({ sources: ['nyt'], categories: ['science'] }),
+      expect.anything(),
     );
     const titles = (await screen.findAllByRole('heading', { level: 3 })).map((h) => h.textContent);
     expect(titles[0]).toMatch(/Followed story/);

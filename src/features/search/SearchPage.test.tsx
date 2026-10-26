@@ -46,8 +46,8 @@ describe('SearchPage', () => {
         categories: ['science', 'health'],
         sources: ['guardian'],
         from: '2024-05-01',
-        page: 1,
       }),
+      expect.anything(),
     );
     expect(screen.getByLabelText('Keyword')).toHaveValue('climate');
     expect(screen.getByRole('checkbox', { name: 'Science' })).toBeChecked();
@@ -62,7 +62,10 @@ describe('SearchPage', () => {
 
     await waitFor(() => expect(screen.getByTestId('search')).toHaveTextContent('?q=chips'));
     await waitFor(() =>
-      expect(search).toHaveBeenLastCalledWith(expect.objectContaining({ keyword: 'chips' })),
+      expect(search).toHaveBeenLastCalledWith(
+        expect.objectContaining({ keyword: 'chips' }),
+        expect.anything(),
+      ),
     );
     // Typing 5 characters must not trigger 5 searches.
     expect(search.mock.calls.filter(([p]) => p.keyword)).toHaveLength(1);
@@ -91,6 +94,7 @@ describe('SearchPage', () => {
           sources: ['guardian'],
           from: todayIso,
         }),
+        expect.anything(),
       ),
     );
   });

@@ -7,6 +7,8 @@ const setup = () => {
   return { getJson, provider: new NytProvider({ getJson }) };
 };
 
+const REQ = { page: 1 };
+
 describe('NytProvider', () => {
   it('returns no articles when NYT responds with docs: null (zero hits)', async () => {
     const getJson = vi.fn<HttpClient['getJson']>().mockResolvedValue({
@@ -15,12 +17,15 @@ describe('NytProvider', () => {
     });
     const provider = new NytProvider({ getJson });
 
-    await expect(provider.search({ keyword: 'nothing' })).resolves.toEqual([]);
+    await expect(provider.search({ ...REQ, keyword: 'nothing' })).resolves.toEqual({
+      articles: [],
+      hasMore: false,
+    });
   });
 
   it('maps docs into unified articles', async () => {
     const { provider } = setup();
-    const articles = await provider.search({});
+    const { articles } = await provider.search(REQ);
 
     expect(articles).toHaveLength(3);
     expect(articles[0]).toMatchObject({
@@ -44,7 +49,7 @@ describe('NytProvider', () => {
 
   it('keeps absolute image URLs, drops the NYT byline-as-author and maps Arts to entertainment', async () => {
     const { provider } = setup();
-    const arts = (await provider.search({}))[2];
+    const arts = (await provider.search(REQ)).articles[2];
     expect(arts).toMatchObject({
       imageUrl: 'https://static01.nyt.com/images/a.jpg',
       authors: [],
@@ -71,6 +76,36 @@ describe('NytProvider', () => {
         fq: 'section_name:("Technology" "Arts")',
         page: 0,
       }),
+      expect.anything(),
     );
+  });
+
+  it('widens a local-day range to the UTC days it touches', async () => {
+    process.env.TZ = 'Pacific/Auckland'; // UTC+13 in October: local Oct 27 starts on UTC Oct 26
+    const { provider, getJson } = setup();
+    await provider.search({ page: 1, from: '2026-10-27', to: '2026-10-27' });
+
+    expect(getJson.mock.calls[0]?.[1]).toMatchObject({
+      begin_date: '20261026',
+      end_date: '20261027',
+    });
+  });
+
+  it('stops paging at the end of the hits or the 1000-result cap', async () => {
+    const withHits = (hits: number) => ({
+      response: { docs: fixture.response.docs, meta: { hits } },
+    });
+    const getJson = vi
+      .fn<HttpClient['getJson']>()
+      .mockResolvedValueOnce(withHits(25))
+      .mockResolvedValueOnce(withHits(25))
+      .mockResolvedValueOnce(withHits(5000))
+      .mockResolvedValueOnce(withHits(5000));
+    const provider = new NytProvider({ getJson });
+
+    expect((await provider.search({ page: 2 })).hasMore).toBe(true);
+    expect((await provider.search({ page: 3 })).hasMore).toBe(false);
+    expect((await provider.search({ page: 99 })).hasMore).toBe(true);
+    expect((await provider.search({ page: 100 })).hasMore).toBe(false);
   });
 });

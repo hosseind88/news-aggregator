@@ -1,7 +1,13 @@
 import { createArticle } from './createArticle';
 import { authorKey, normalizeAuthorName, normalizeAuthors } from './authors';
 import { normalizeCategory } from './category';
-import { isWithinDateRange, normalizeDate } from './date';
+import {
+  endOfLocalDay,
+  isValidDay,
+  isWithinDateRange,
+  normalizeDate,
+  startOfLocalDay,
+} from './date';
 import { cleanText, decodeEntities, stripPublisherSuffix, titleKey, truncate } from './text';
 import { canonicalUrl, normalizeUrl, stableId } from './url';
 
@@ -217,5 +223,30 @@ describe('createArticle', () => {
     { publishedAt: 'garbage' },
   ])('drops unusable records %j', (override) => {
     expect(createArticle({ ...raw, ...override })).toBeUndefined();
+  });
+});
+
+describe('local-day semantics', () => {
+  it('accepts only real calendar days', () => {
+    expect(isValidDay('2024-02-29')).toBe(true);
+    expect(isValidDay('2023-02-29')).toBe(false);
+    expect(isValidDay('2024-13-01')).toBe(false);
+    expect(isValidDay('garbage')).toBe(false);
+    expect(isValidDay(undefined)).toBe(false);
+  });
+
+  it('treats the day as the viewer sees it, not as UTC', () => {
+    process.env.TZ = 'Pacific/Auckland'; // UTC+13 on 2026-10-27
+    expect(startOfLocalDay('2026-10-27')?.toISOString()).toBe('2026-10-26T11:00:00.000Z');
+    expect(endOfLocalDay('2026-10-27')?.toISOString()).toBe('2026-10-27T10:59:59.999Z');
+    // 01:00 local on the 27th is still the 26th in UTC; "Today" must include it.
+    expect(isWithinDateRange('2026-10-26T12:00:00.000Z', '2026-10-27', '2026-10-27')).toBe(true);
+    expect(isWithinDateRange('2026-10-27T11:00:00.000Z', '2026-10-27', '2026-10-27')).toBe(false);
+  });
+
+  it('handles zones behind UTC', () => {
+    process.env.TZ = 'America/Los_Angeles';
+    expect(isWithinDateRange('2024-05-02T06:30:00.000Z', '2024-05-01', '2024-05-01')).toBe(true);
+    expect(isWithinDateRange('2024-05-02T07:30:00.000Z', '2024-05-01', '2024-05-01')).toBe(false);
   });
 });
