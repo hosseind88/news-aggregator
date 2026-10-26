@@ -10,8 +10,10 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const withQueryKey = (name: string, key = '') => (p: string) =>
-    `${p.replace(new RegExp(`^/api/${name}`), '')}${p.includes('?') ? '&' : '?'}api-key=${encodeURIComponent(key)}`;
+  const withQueryKey =
+    (name: string, key = '') =>
+    (p: string) =>
+      `${p.replace(new RegExp(`^/api/${name}`), '')}${p.includes('?') ? '&' : '?'}api-key=${encodeURIComponent(key)}`;
 
   return {
     plugins: [react()],

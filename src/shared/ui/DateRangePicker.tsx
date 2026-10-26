@@ -14,7 +14,7 @@ export function DateRangePicker({ from, to, onChange }: Props) {
   return (
     <fieldset>
       <legend className="mb-2 text-sm font-semibold">Date range</legend>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
         <TextInput
           type="date"
           label="From"
