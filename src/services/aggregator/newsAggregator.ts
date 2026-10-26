@@ -10,16 +10,13 @@ import type {
   SourceFailure,
   SourceId,
 } from '@/domain/news';
-import { AllSourcesFailedError, SourceExhaustedError } from '@/services/errors';
+import { AllSourcesFailedError, SourceExhaustedError, describeError } from '@/services/errors';
 import { canonicalUrl, isWithinDateRange, titleKey } from '@/services/normalize';
 import { compareNewest, dedupeArticles } from './dedupe';
 
 export const ARTICLES_PER_PAGE = 24;
 /** Upper bound on upstream round-trips needed to fill one page. */
 const MAX_ROUNDS = 8;
-
-const errorMessage = (reason: unknown): string =>
-  reason instanceof Error ? reason.message : 'Unknown error';
 
 const time = (article: Article) => Date.parse(article.publishedAt);
 
@@ -77,7 +74,7 @@ export class NewsAggregator implements NewsService {
           failures.push({
             source: id,
             sourceName: byId.get(id)!.name,
-            message: errorMessage(result.reason),
+            message: describeError(result.reason),
           });
         }
       });
@@ -121,11 +118,11 @@ export class NewsAggregator implements NewsService {
     this.consume(state, page);
 
     const selected = Object.values(state);
-    if (!page.length && failures.length && selected.every((c) => c.status === 'failed')) {
-      throw new AllSourcesFailedError(failures);
-    }
+    // Nothing to show and something failed: surface it (the cursor stays retryable) rather
+    // than resolving an empty page that the UI would read as "all caught up".
+    if (!page.length && failures.length) throw new AllSourcesFailedError(failures);
 
-    const hasRemaining = selected.some((c) => c.status === 'active' || c.buffer.length > 0);
+    const hasRemaining = selected.some((c) => c.status !== 'done' || c.buffer.length > 0);
     return { articles: page, failures, nextCursor: hasRemaining ? state : undefined };
   }
 
@@ -136,9 +133,19 @@ export class NewsAggregator implements NewsService {
     params: SearchParams,
   ): Record<string, SourceCursor> {
     if (cursor) {
-      return Object.fromEntries(
+      const copy = Object.fromEntries(
         Object.entries(cursor).map(([id, c]) => [id, { ...c, buffer: [...c.buffer] }]),
       );
+      // A failed source is left alone while others can still fill pages (no hammering a
+      // rate-limited API on every scroll), but once nothing else can serve, the next request
+      // retries it, so "Retry" means something and a failure never silently ends the feed.
+      const canServe = Object.values(copy).some((c) => c.status === 'active' || c.buffer.length);
+      if (!canServe) {
+        Object.values(copy).forEach((c) => {
+          if (c.status === 'failed') c.status = 'active';
+        });
+      }
+      return copy;
     }
     return Object.fromEntries(
       this.registered

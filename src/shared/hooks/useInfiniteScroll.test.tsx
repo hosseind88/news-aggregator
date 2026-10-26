@@ -68,6 +68,16 @@ describe('useInfiniteScroll', () => {
     expect(observers).toHaveLength(1);
   });
 
+  it('re-observes when new data lands even if isFetching never visibly toggled', () => {
+    const p = props({ revision: 1 });
+    const { rerender } = render(<Harness {...p} />);
+    expect(observers).toHaveLength(1);
+
+    rerender(<Harness {...p} revision={2} />);
+    expect(firstObserver().disconnect).toHaveBeenCalled();
+    expect(observers).toHaveLength(2);
+  });
+
   it('disconnects when there are no more pages', () => {
     const p = props();
     const { rerender } = render(<Harness {...p} />);

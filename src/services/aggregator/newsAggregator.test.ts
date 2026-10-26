@@ -1,5 +1,6 @@
+import { z } from 'zod';
 import type { Article, ProviderRequest, SourceId } from '@/domain/news';
-import { AllSourcesFailedError, SourceExhaustedError } from '@/services/errors';
+import { AllSourcesFailedError, HttpError, SourceExhaustedError } from '@/services/errors';
 import { makeArticle, makeProvider } from '@/test/factories';
 import { ARTICLES_PER_PAGE, NewsAggregator } from './newsAggregator';
 
@@ -126,7 +127,7 @@ describe('NewsAggregator', () => {
       makeProvider({
         id: 'newsapi',
         name: 'NewsAPI',
-        search: async () => Promise.reject(new Error('boom')),
+        search: async () => Promise.reject(new HttpError(500, 'boom')),
       }),
       makeProvider({ id: 'guardian', search: async () => page([makeArticle({ id: 'ok' })]) }),
     ]);
@@ -140,15 +141,35 @@ describe('NewsAggregator', () => {
   it('throws AllSourcesFailedError instead of resolving empty when every provider fails', async () => {
     const aggregator = new NewsAggregator([
       makeProvider({ id: 'nyt', name: 'NYT', search: async () => Promise.reject('nope') }),
-      makeProvider({ id: 'guardian', search: async () => Promise.reject(new Error('down')) }),
+      makeProvider({
+        id: 'guardian',
+        search: async () => Promise.reject(new HttpError(503, 'down')),
+      }),
     ]);
 
     const error = await aggregator.search({}).catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(AllSourcesFailedError);
     expect((error as AllSourcesFailedError).failures.map((f) => f.message)).toEqual([
-      'Unknown error',
+      'Something went wrong. Please try again.',
       'down',
+    ]);
+  });
+
+  it('never leaks raw validation errors into per-source failure messages', async () => {
+    const invalid = z.object({ status: z.string() }).safeParse({}).error;
+    const aggregator = new NewsAggregator([
+      makeProvider({ id: 'nyt', name: 'NYT', search: async () => Promise.reject(invalid) }),
+      makeProvider({
+        id: 'guardian',
+        search: async () => ({ articles: [makeArticle()], hasMore: false }),
+      }),
+    ]);
+
+    const { failures } = await aggregator.search({});
+
+    expect(failures.map((f) => f.message)).toEqual([
+      'The source returned data in an unexpected format',
     ]);
   });
 
@@ -265,10 +286,10 @@ describe('NewsAggregator', () => {
       expect(capped.search).toHaveBeenCalledTimes(3);
     });
 
-    it('drops a source that fails mid-scroll but keeps serving the rest', async () => {
+    it('keeps serving the rest when a source fails mid-scroll, then reports it instead of ending', async () => {
       const flaky = pagedSource('newsapi', { count: 60, step: 10 });
       flaky.search.mockImplementation(async ({ page: n }) => {
-        if (n >= 2) throw new Error('rate limited');
+        if (n >= 2) throw new HttpError(429, 'rate limited');
         return page(flaky.all.slice(0, 10), true);
       });
       const steady = pagedSource('guardian', { count: 50, step: 10 });
@@ -276,17 +297,25 @@ describe('NewsAggregator', () => {
 
       const results = [];
       let cursor;
-      do {
-        const result = await aggregator.search({}, { cursor });
-        results.push(result);
-        cursor = result.nextCursor;
-      } while (cursor);
+      let error: unknown;
+      try {
+        do {
+          const result = await aggregator.search({}, { cursor });
+          results.push(result);
+          cursor = result.nextCursor;
+        } while (cursor);
+      } catch (e) {
+        error = e;
+      }
 
       expect(results.flatMap((r) => r.failures)).toHaveLength(1);
       expect(
         results.flatMap((r) => r.articles).filter((a) => a.source === 'guardian'),
       ).toHaveLength(50);
-      expect(flaky.search).toHaveBeenCalledTimes(2);
+      // The failed source is not hammered while others serve; once they are done it is retried
+      // and, still failing, the feed reports an error instead of claiming it is complete.
+      expect(error).toBeInstanceOf(AllSourcesFailedError);
+      expect(flaky.search).toHaveBeenCalledTimes(3);
     });
 
     it('throws when every source fails on a later page, leaving the cursor reusable', async () => {
@@ -299,8 +328,8 @@ describe('NewsAggregator', () => {
           page(s.all.slice((n - 1) * 10, n * 10), n * 10 < 100);
 
       const first = await aggregator.search({});
-      a.search.mockRejectedValue(new Error('down'));
-      b.search.mockRejectedValue(new Error('down'));
+      a.search.mockRejectedValue(new HttpError(503, 'down'));
+      b.search.mockRejectedValue(new HttpError(503, 'down'));
 
       let cursor = first.nextCursor;
       let snapshot = JSON.stringify(cursor);

@@ -55,6 +55,7 @@ export function ArticleResults({
     hasNextPage,
     isFetching,
     disabled: isFetchNextPageError,
+    revision: query.dataUpdatedAt,
   });
 
   if (isPending) {

@@ -6,6 +6,12 @@ interface Options {
   isFetching: boolean;
   /** Pause auto-loading, e.g. after an error, so it doesn't retry in a loop. */
   disabled?: boolean;
+  /**
+   * Changes whenever new data lands. A page served without a network round trip can finish
+   * inside one React render, so `isFetching` never visibly toggles; this still re-arms the
+   * observer so a sentinel that remains in view keeps loading.
+   */
+  revision?: unknown;
 }
 
 /**
@@ -13,7 +19,13 @@ interface Options {
  * The observer only exists while a load is possible, so it can't fire duplicate requests;
  * it is recreated after each fetch, which re-checks a sentinel that is still in view.
  */
-export function useInfiniteScroll({ onLoadMore, hasNextPage, isFetching, disabled }: Options) {
+export function useInfiniteScroll({
+  onLoadMore,
+  hasNextPage,
+  isFetching,
+  disabled,
+  revision,
+}: Options) {
   const [sentinel, setSentinel] = useState<Element | null>(null);
   const onLoadMoreRef = useRef(onLoadMore);
 
@@ -33,7 +45,7 @@ export function useInfiniteScroll({ onLoadMore, hasNextPage, isFetching, disable
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [sentinel, active]);
+  }, [sentinel, active, revision]);
 
   return setSentinel;
 }
