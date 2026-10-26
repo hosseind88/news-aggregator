@@ -1,0 +1,35 @@
+{
+  "status": "ok",
+  "totalResults": 4,
+  "articles": [
+    {
+      "source": { "id": "bbc-news", "name": "BBC News" },
+      "author": "Jane Reporter",
+      "title": "Chip makers rally on AI demand",
+      "description": "<p>Shares rose sharply.</p>",
+      "url": "https://www.bbc.co.uk/news/chips",
+      "urlToImage": "https://img.example.com/chips.jpg",
+      "publishedAt": "2024-05-02T08:30:00Z",
+      "content": "..."
+    },
+    {
+      "source": { "id": null, "name": null },
+      "author": null,
+      "title": "[Removed]",
+      "description": "[Removed]",
+      "url": "https://removed.com",
+      "urlToImage": null,
+      "publishedAt": "2024-05-02T08:00:00Z"
+    },
+    {
+      "source": { "id": null, "name": "Wire" },
+      "author": null,
+      "title": "No image story",
+      "description": null,
+      "url": "https://wire.example.com/story",
+      "urlToImage": null,
+      "publishedAt": "2024-05-01T08:00:00Z"
+    },
+    { "title": "Malformed: no url", "publishedAt": "2024-05-01T00:00:00Z" }
+  ]
+}

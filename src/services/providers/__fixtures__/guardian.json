@@ -1,0 +1,28 @@
+{
+  "response": {
+    "status": "ok",
+    "pages": 12,
+    "results": [
+      {
+        "id": "business/2024/may/02/markets",
+        "sectionName": "Business",
+        "webPublicationDate": "2024-05-02T09:15:00Z",
+        "webTitle": "Markets edge higher",
+        "webUrl": "https://www.theguardian.com/business/2024/may/02/markets",
+        "fields": {
+          "thumbnail": "https://media.guim.co.uk/markets.jpg",
+          "trailText": "Investors <strong>cheer</strong> rate hopes.",
+          "byline": "John Writer"
+        }
+      },
+      {
+        "id": "world/2024/may/01/bare",
+        "sectionName": "World news",
+        "webPublicationDate": "2024-05-01T12:00:00Z",
+        "webTitle": "Bare result",
+        "webUrl": "https://www.theguardian.com/world/2024/may/01/bare"
+      },
+      { "id": "broken", "webTitle": "", "webUrl": "nope" }
+    ]
+  }
+}
