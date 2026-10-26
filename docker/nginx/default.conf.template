@@ -1,67 +1,105 @@
-# Rendered by envsubst at container start. Only *_KEY variables are substituted;
-# nginx's own $variables are left untouched (see NGINX_ENVSUBST_FILTER in the Dockerfile).
+# Rendered by envsubst at container start. Only *_KEY, *_UPSTREAM, *_TTL, *_RATE and *_BURST
+# variables are substituted; nginx's own $variables are left untouched (NGINX_ENVSUBST_FILTER
+# in the Dockerfile).
 #
-# The browser only calls /api/<source>/...; nginx forwards to the real API and adds the
-# secret key here, so keys never ship in the JS bundle and CORS/origin limits don't apply.
+# The browser only calls /api/<source>/...; nginx forwards an allowlisted set of endpoints to the
+# real API and adds the secret key here, so keys never ship in the JS bundle. The proxy is also
+# the abuse boundary: per-IP rate limit, response cache, short timeouts, no cookies.
+
+# One bucket per client IP for everything under /api/.
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=${API_RATE};
+limit_req_status 429;
+
+# Identical searches (same upstream URL) are served from disk for API_CACHE_TTL, which keeps
+# quota use flat when many visitors scroll the same feed.
+proxy_cache_path /var/cache/nginx/api levels=1:2 keys_zone=api_cache:10m max_size=64m inactive=10m use_temp_path=off;
 
 server {
     listen 80;
     server_name _;
+    server_tokens off;
 
     root /usr/share/nginx/html;
     index index.html;
 
     gzip on;
-    gzip_types text/css application/javascript application/json image/svg+xml;
+    gzip_vary on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types text/css text/plain text/javascript application/javascript application/json image/svg+xml;
 
-    add_header X-Content-Type-Options nosniff always;
-    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    # Dotfiles are never part of the site.
+    location ~ /\. { return 404; }
 
-    # ---- API proxies (GET only) ----
-
-    # NewsAPI.org: key sent as a header.
-    location /api/newsapi/ {
-        limit_except GET { deny all; }
-        rewrite ^/api/newsapi/(.*)$ /v2/$1 break;
-        proxy_pass https://newsapi.org;
-        proxy_ssl_server_name on;
-        proxy_set_header Host newsapi.org;
-        proxy_set_header X-Api-Key "${NEWSAPI_KEY}";
-        proxy_set_header Cookie "";
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
     }
 
-    # (`set` must precede `rewrite ... break`, which ends rewrite-phase directives.)
-    # The Guardian Open Platform: key sent as `api-key` query param.
-    location /api/guardian/ {
+    # ---- API proxy: GET only, explicit endpoints only ----
+
+    # Shared by the three upstream locations below.
+    #   proxy_ignore_headers: upstream cache/cookie headers must not decide our caching.
+    #   proxy_cache_use_stale: serve the last good answer through upstream 5xx/429 and timeouts.
+    #   proxy_cache_lock: concurrent identical misses collapse into one upstream request.
+    # (Not an include: these directives are only valid inside a location, and a snippet keeps
+    # the three locations identical.)
+
+    # NewsAPI.org: key sent as a header.
+    location ~ ^/api/newsapi/(everything|top-headlines)$ {
         limit_except GET { deny all; }
+        limit_req zone=api_limit burst=${API_BURST} nodelay;
+        rewrite ^/api/newsapi/(.*)$ /v2/$1 break;
+        proxy_pass ${NEWSAPI_UPSTREAM};
+        proxy_set_header X-Api-Key "${NEWSAPI_KEY}";
+        proxy_cache_valid 200 ${API_CACHE_TTL};
+        include /etc/nginx/snippets/api-proxy.conf;
+    }
+
+    # The Guardian Open Platform: key sent as `api-key` query param.
+    # (`set` must precede `rewrite ... break`, which ends rewrite-phase directives.)
+    location ~ ^/api/guardian/search$ {
+        limit_except GET { deny all; }
+        limit_req zone=api_limit burst=${API_BURST} nodelay;
         set $args "$args&api-key=${GUARDIAN_KEY}";
         rewrite ^/api/guardian/(.*)$ /$1 break;
-        proxy_pass https://content.guardianapis.com;
-        proxy_ssl_server_name on;
-        proxy_set_header Host content.guardianapis.com;
-        proxy_set_header Cookie "";
+        proxy_pass ${GUARDIAN_UPSTREAM};
+        proxy_cache_valid 200 ${API_CACHE_TTL};
+        include /etc/nginx/snippets/api-proxy.conf;
     }
 
     # NYT Article Search: key sent as `api-key` query param.
-    location /api/nyt/ {
+    location ~ ^/api/nyt/articlesearch\.json$ {
         limit_except GET { deny all; }
+        limit_req zone=api_limit burst=${API_BURST} nodelay;
         set $args "$args&api-key=${NYT_KEY}";
         rewrite ^/api/nyt/(.*)$ /svc/search/v2/$1 break;
-        proxy_pass https://api.nytimes.com;
-        proxy_ssl_server_name on;
-        proxy_set_header Host api.nytimes.com;
-        proxy_set_header Cookie "";
+        proxy_pass ${NYT_UPSTREAM};
+        proxy_cache_valid 200 ${API_CACHE_TTL};
+        include /etc/nginx/snippets/api-proxy.conf;
     }
 
-    # Hashed build assets are immutable.
+    # Anything else under /api/ is not forwarded (no open proxy to the upstream hosts).
+    location /api/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        return 404;
+    }
+
+    # ---- Static site ----
+
+    # Hashed build assets never change under the same URL.
     location /assets/ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
         try_files $uri =404;
     }
 
-    # SPA fallback: client-side routes resolve to index.html.
+    # index.html (and the SPA fallback) must always be revalidated, otherwise a deploy keeps
+    # pointing browsers at hashed files that no longer exist.
     location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
         try_files $uri /index.html;
     }
 }

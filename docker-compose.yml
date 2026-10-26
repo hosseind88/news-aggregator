@@ -3,7 +3,7 @@ services:
     build: .
     image: news-aggregator
     ports:
-      - '3000:80'
+      - '${WEB_PORT:-3000}:80'
     # Compose reads ./.env automatically; keys are passed to nginx at runtime.
     environment:
       NEWSAPI_KEY: ${NEWSAPI_KEY:-}
