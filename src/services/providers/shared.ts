@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import type { z } from 'zod';
 import type { Category } from '@/domain/news';
 
 /** Stable, URL-derived id so the same story keeps the same React key across fetches. */
