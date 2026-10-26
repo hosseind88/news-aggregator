@@ -6,7 +6,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage'] },
+  { ignores: ['dist', 'coverage', 'test-results', 'playwright-report'] },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
@@ -18,6 +18,11 @@ export default tseslint.config(
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       '@typescript-eslint/consistent-type-imports': 'error',
     },
+  },
+  {
+    // Playwright fixtures are called `use(...)` and destructure `{}`; neither is React.
+    files: ['e2e/**/*.ts'],
+    rules: { 'react-hooks/rules-of-hooks': 'off', 'no-empty-pattern': 'off' },
   },
   prettier,
 );

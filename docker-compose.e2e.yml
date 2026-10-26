@@ -1,0 +1,55 @@
+# End-to-end stack: the real production image behind a mock of the three upstream news APIs.
+#   npm run e2e:up     build + start (web :3300, edge :3301, mock :4010)
+#   npm run e2e        run the Playwright suite against it
+#   npm run e2e:down   tear it down
+name: news-aggregator-e2e
+
+x-web: &web
+  build: .
+  environment: &web-env
+    NEWSAPI_KEY: e2e-fake-key
+    GUARDIAN_KEY: e2e-fake-key
+    NYT_KEY: e2e-fake-key
+    NEWSAPI_UPSTREAM: http://mock:4010
+    GUARDIAN_UPSTREAM: http://mock:4010
+    NYT_UPSTREAM: http://mock:4010
+  depends_on:
+    mock:
+      condition: service_healthy
+
+services:
+  mock:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/mock-upstream:/app:ro
+    command: node server.mjs
+    ports:
+      - '4010:4010'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4010/__health']
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  # The app under test. Response cache off so every failure mode the mock injects is observed.
+  web:
+    <<: *web
+    ports:
+      - '3300:80'
+    environment:
+      <<: *web-env
+      API_CACHE_TTL: 0s
+      API_RATE: 100r/s
+      API_BURST: 200
+
+  # Same image with the production-like cache and a tiny rate limit, for the proxy tests.
+  edge:
+    <<: *web
+    ports:
+      - '3301:80'
+    environment:
+      <<: *web-env
+      API_CACHE_TTL: 60s
+      API_RATE: 2r/s
+      API_BURST: 3
