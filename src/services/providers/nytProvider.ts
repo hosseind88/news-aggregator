@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { Article, Category, NewsProvider, SearchParams } from '@/domain/news';
 import type { HttpClient } from '@/services/http/httpClient';
-import { clean, hashId, parseItems, supportedCategoriesOf } from './shared';
+import { createArticle } from '@/services/normalize';
+import { parseItems, supportedCategoriesOf } from './shared';
 
 const IMAGE_HOST = 'https://www.nytimes.com/';
 
@@ -25,6 +26,7 @@ const docSchema = z.object({
   snippet: z.string().nullish(),
   byline: z.object({ original: z.string().nullish() }).nullish(),
   section_name: z.string().nullish(),
+  news_desk: z.string().nullish(),
   pub_date: z.string(),
   multimedia: z
     .union([
@@ -36,37 +38,37 @@ const docSchema = z.object({
 type RawDoc = z.infer<typeof docSchema>;
 
 const responseSchema = z.object({
-  response: z.object({ docs: z.array(z.unknown()).default([]) }),
+  // NYT returns `docs: null` (not []) when a query has no hits.
+  response: z.object({
+    docs: z
+      .array(z.unknown())
+      .nullish()
+      .transform((docs) => docs ?? []),
+  }),
 });
 
-const pickImage = (multimedia: RawDoc['multimedia']): string | undefined => {
+const pickImagePath = (multimedia: RawDoc['multimedia']): string | undefined => {
   if (!multimedia) return undefined;
-  const url = Array.isArray(multimedia)
+  return Array.isArray(multimedia)
     ? (multimedia.find((m) => m.subtype === 'thumbnail') ?? multimedia[0])?.url
     : multimedia.default?.url;
-  if (!url) return undefined;
-  return url.startsWith('http') ? url : `${IMAGE_HOST}${url}`;
 };
-
-/** NYT bylines look like "By Jane Doe and John Roe". */
-const parseByline = (original?: string | null): string | undefined =>
-  clean(original?.replace(/^by\s+/i, ''));
 
 /** NYT dates are `YYYYMMDD`. */
 const toNytDate = (date?: string): string | undefined => date?.replaceAll('-', '');
 
-export const mapNytDoc = (raw: RawDoc): Article => ({
-  id: hashId('nyt', raw._id),
-  title: raw.headline.main,
-  description: clean(raw.abstract ?? raw.snippet),
-  url: raw.web_url,
-  imageUrl: pickImage(raw.multimedia),
-  author: parseByline(raw.byline?.original),
-  source: 'nyt',
-  sourceName: 'The New York Times',
-  category: raw.section_name ?? undefined,
-  publishedAt: raw.pub_date,
-});
+export const mapNytDoc = (raw: RawDoc): Article | undefined =>
+  createArticle({
+    source: 'nyt',
+    title: raw.headline.main,
+    description: raw.abstract ?? raw.snippet,
+    url: raw.web_url,
+    imageUrl: pickImagePath(raw.multimedia),
+    imageBase: IMAGE_HOST,
+    author: raw.byline?.original,
+    categories: [raw.section_name, raw.news_desk],
+    publishedAt: raw.pub_date,
+  });
 
 export class NytProvider implements NewsProvider {
   readonly id = 'nyt' as const;
@@ -86,6 +88,6 @@ export class NytProvider implements NewsProvider {
       page: page - 1, // NYT pages are 0-based
     });
     const { response } = responseSchema.parse(payload);
-    return parseItems(docSchema, response.docs).map(mapNytDoc);
+    return parseItems(docSchema, response.docs).flatMap((item) => mapNytDoc(item) ?? []);
   }
 }
