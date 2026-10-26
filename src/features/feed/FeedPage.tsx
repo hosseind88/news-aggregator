@@ -62,7 +62,7 @@ export function FeedPage() {
         emptyTitle={onlyFollowed ? 'No articles from followed authors yet' : 'No articles found'}
         emptyDescription={
           onlyFollowed
-            ? 'Turn off the filter or load more articles.'
+            ? 'Turn off the filter to see all articles.'
             : 'Try different preferences or check back later.'
         }
       />

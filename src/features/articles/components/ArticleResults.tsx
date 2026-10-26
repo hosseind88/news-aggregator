@@ -1,11 +1,14 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import type { Article } from '@/domain/news';
-import { Button } from '@/shared/ui/Button';
+import { useInfiniteScroll } from '@/shared/hooks/useInfiniteScroll';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { ErrorState } from '@/shared/ui/ErrorState';
+import { GRID_CLASS, trimToFullRows } from '../gridLayout';
+import { useGridColumns } from '../hooks/useGridColumns';
 import type { ArticlesQuery } from '../hooks/useArticles';
 import { ArticleCard } from './ArticleCard';
 import { ArticleCardSkeleton } from './ArticleCardSkeleton';
+import { InfiniteScrollFooter } from './InfiniteScrollFooter';
 import { SourceFailureNotice } from './SourceFailureNotice';
 
 interface Props {
@@ -19,7 +22,6 @@ interface Props {
 }
 
 const SKELETON_COUNT = 6;
-const gridClass = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
 
 /** Renders every state of an articles query so pages stay declarative. */
 export function ArticleResults({
@@ -30,12 +32,33 @@ export function ArticleResults({
   emptyDescription = 'Try adjusting your search or filters.',
   emptyAction,
 }: Props) {
-  const { failures, isPending, isError, error, hasNextPage, isFetchingNextPage, fetchNextPage } =
-    query;
+  const {
+    failures,
+    isPending,
+    isError,
+    error,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    fetchNextPage,
+  } = query;
+
+  const columns = useGridColumns();
+  const visibleArticles = useMemo(
+    () => trimToFullRows(articles, columns, hasNextPage),
+    [articles, columns, hasNextPage],
+  );
+  const setSentinel = useInfiniteScroll({
+    onLoadMore: () => void fetchNextPage(),
+    hasNextPage,
+    isFetching,
+    disabled: isFetchNextPageError,
+  });
 
   if (isPending) {
     return (
-      <div className={gridClass} role="status" aria-label="Loading articles">
+      <div className={GRID_CLASS} role="status" aria-label="Loading articles">
         {Array.from({ length: SKELETON_COUNT }, (_, i) => (
           <ArticleCardSkeleton key={i} />
         ))}
@@ -63,25 +86,23 @@ export function ArticleResults({
       {articles.length === 0 ? (
         <EmptyState title={emptyTitle} description={emptyDescription} action={emptyAction} />
       ) : (
-        <ul className={gridClass}>
-          {articles.map((article) => (
+        <ul className={GRID_CLASS}>
+          {visibleArticles.map((article) => (
             <li key={article.id}>
               <ArticleCard article={article} followed={isFollowed?.(article)} />
             </li>
           ))}
         </ul>
       )}
-      {hasNextPage && (
-        <div className="mt-8 text-center">
-          <Button
-            variant="secondary"
-            onClick={() => void fetchNextPage()}
-            disabled={isFetchingNextPage}
-          >
-            {isFetchingNextPage ? 'Loading…' : 'Load more'}
-          </Button>
-        </div>
-      )}
+      <InfiniteScrollFooter
+        columns={columns}
+        loadedCount={articles.length}
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+        isError={isFetchNextPageError}
+        onRetry={() => void fetchNextPage()}
+        setSentinel={setSentinel}
+      />
     </>
   );
 }
