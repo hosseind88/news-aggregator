@@ -1,8 +1,8 @@
 import { HttpError, NetworkError, RequestTimeoutError } from '@/services/errors';
 
-export type QueryParams = Record<string, string | number | undefined>;
+type QueryParams = Record<string, string | number | undefined>;
 
-export interface RequestOptions {
+interface RequestOptions {
   /** Aborts the request, e.g. when the query that needed it is cancelled. */
   signal?: AbortSignal;
 }

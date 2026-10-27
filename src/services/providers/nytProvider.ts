@@ -69,7 +69,7 @@ const pickImagePath = (multimedia: RawDoc['multimedia']): string | undefined => 
 const utcDayStamp = (instant: Date | undefined): string | undefined =>
   instant && toUtcDayStamp(instant);
 
-export const mapNytDoc = (raw: RawDoc): Article | undefined =>
+const mapNytDoc = (raw: RawDoc): Article | undefined =>
   createArticle({
     source: 'nyt',
     title: raw.headline.main,

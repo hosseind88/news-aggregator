@@ -48,7 +48,7 @@ const responseSchema = z.object({
   }),
 });
 
-export const mapGuardianResult = (raw: RawResult): Article | undefined =>
+const mapGuardianResult = (raw: RawResult): Article | undefined =>
   createArticle({
     source: 'guardian',
     title: raw.webTitle,

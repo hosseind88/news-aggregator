@@ -36,7 +36,7 @@ const responseSchema = z.object({
   articles: z.array(z.unknown()).default([]),
 });
 
-export const mapNewsApiArticle = (raw: RawArticle, category?: Category): Article | undefined =>
+const mapNewsApiArticle = (raw: RawArticle, category?: Category): Article | undefined =>
   createArticle({
     source: 'newsapi',
     title: raw.title,

@@ -51,7 +51,7 @@ const capitalise = (word: string) =>
     .replace(/(^|[-'’])(\p{L})/gu, (_, sep: string, letter: string) => sep + letter.toUpperCase());
 
 /** "JANE DOE" / "jane doe" -> "Jane Doe"; words with intentional inner caps ("McDonald") are kept. */
-export const toTitleCase = (name: string): string =>
+const toTitleCase = (name: string): string =>
   name
     .split(' ')
     .map((word, index) => {

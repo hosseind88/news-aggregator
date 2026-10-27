@@ -41,7 +41,7 @@ const pickAuthors = (raw: unknown): string[] => {
  * localStorage is user-editable and survives app upgrades, so anything read back is untrusted:
  * keep only known sources/categories and well-formed, de-duplicated author names.
  */
-export const sanitizePreferences = (raw: unknown): PreferencesData => {
+const sanitizePreferences = (raw: unknown): PreferencesData => {
   const data = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
   return {
     sources: pick<SourceId>(data.sources, SOURCE_IDS),

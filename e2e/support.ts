@@ -1,6 +1,6 @@
 import { expect, test as base, type Page } from '@playwright/test';
 
-export const MOCK = process.env.E2E_MOCK_URL ?? 'http://localhost:4010';
+const MOCK = process.env.E2E_MOCK_URL ?? 'http://localhost:4010';
 export const EDGE = process.env.E2E_EDGE_URL ?? 'http://localhost:3301';
 
 export type Source = 'newsapi' | 'guardian' | 'nyt' | '*';

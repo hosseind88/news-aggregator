@@ -30,9 +30,9 @@ export const decodeEntities = (value: string): string =>
   });
 
 /** Removes real tags only (`<p>`, `</a>`), not stray "a < b" comparisons. */
-export const stripTags = (value: string): string => value.replace(/<\/?[a-z][^>]*>/gi, ' ');
+const stripTags = (value: string): string => value.replace(/<\/?[a-z][^>]*>/gi, ' ');
 
-export const collapseWhitespace = (value: string): string => value.replace(/\s+/g, ' ').trim();
+const collapseWhitespace = (value: string): string => value.replace(/\s+/g, ' ').trim();
 
 /** Cuts at a word boundary and appends an ellipsis. */
 export const truncate = (value: string, maxLength: number): string => {

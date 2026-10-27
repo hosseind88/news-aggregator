@@ -105,8 +105,6 @@ The same approach is used for all three sources for consistency. Hardening in `d
 - **Headers:** CSP, `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Permissions-Policy` are included in **every** location (an `add_header` in a location silently drops inherited ones, which is why `/assets/` used to lose them). `index.html` is `no-cache`; hashed `/assets/*` are `immutable` for a year. Keys are never exposed to the browser.
 - **Config (env, all optional):** `NEWSAPI_UPSTREAM`, `GUARDIAN_UPSTREAM`, `NYT_UPSTREAM`, `API_CACHE_TTL`, `API_RATE`, `API_BURST`, `WEB_PORT` (compose host port). A hostname in an `*_UPSTREAM` is resolved when nginx starts, so recreate the container if it changes.
 
-Proof: [`evidence/after-headers.txt`](evidence/after-headers.txt).
-
 ## Deploy to Vercel
 
 Docker/nginx stays the primary way to run the app. Vercel is an alternative that serves the same `/api/<source>/…` contract, so the frontend is unchanged.

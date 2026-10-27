@@ -11,7 +11,7 @@ import { NytProvider } from './nytProvider';
  * label to `SOURCE_IDS` / `SOURCE_LABELS` in `domain/news.ts`, and add a proxy entry
  * (nginx template and `vite.config.ts`).
  */
-export const createProviders = (): NewsProvider[] => {
+const createProviders = (): NewsProvider[] => {
   const http = createHttpClient();
   return [new NewsApiProvider(http), new GuardianProvider(http), new NytProvider(http)];
 };

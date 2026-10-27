@@ -13,5 +13,5 @@
     "types": ["node"]
   },
   "include": ["e2e", "playwright.config.ts"],
-  "exclude": ["e2e/mock-upstream", "e2e/tools"]
+  "exclude": ["e2e/mock-upstream"]
 }
