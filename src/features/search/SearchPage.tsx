@@ -9,26 +9,26 @@ import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle';
 import { useSearchFilters } from './useSearchFilters';
 
 export function SearchPage() {
-  const { filters, setFilters, reset } = useSearchFilters();
+  const { filters, setFilters, resetFilters } = useSearchFilters();
   useDocumentTitle('Search');
-  const [input, setInput] = useState(filters.keyword ?? '');
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [searchText, setSearchText] = useState(filters.keyword ?? '');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   // Push the debounced keyword into the URL; ignore re-runs caused by other URL changes.
-  const debounced = useDebounce(input.trim());
-  const committed = useRef(debounced);
+  const debouncedSearchText = useDebounce(searchText.trim());
+  const committedSearchText = useRef(debouncedSearchText);
   useEffect(() => {
-    if (debounced === committed.current) return;
-    committed.current = debounced;
-    setFilters({ keyword: debounced });
-  }, [debounced, setFilters]);
+    if (debouncedSearchText === committedSearchText.current) return;
+    committedSearchText.current = debouncedSearchText;
+    setFilters({ keyword: debouncedSearchText });
+  }, [debouncedSearchText, setFilters]);
 
   const query = useArticles(filters);
 
-  const handleReset = () => {
-    setInput('');
-    committed.current = '';
-    reset();
+  const resetSearch = () => {
+    setSearchText('');
+    committedSearchText.current = '';
+    resetFilters();
   };
 
   return (
@@ -41,16 +41,16 @@ export function SearchPage() {
             type="search"
             label="Keyword"
             placeholder="Search headlines and articles…"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
           />
         </div>
         <Button
           variant="secondary"
           className="lg:hidden"
-          aria-expanded={filtersOpen}
+          aria-expanded={isFiltersOpen}
           aria-controls="search-filters"
-          onClick={() => setFiltersOpen((open) => !open)}
+          onClick={() => setIsFiltersOpen((open) => !open)}
         >
           Filters
         </Button>
@@ -60,16 +60,16 @@ export function SearchPage() {
         <aside
           id="search-filters"
           aria-label="Filters"
-          className={`${filtersOpen ? 'block' : 'hidden'} h-fit rounded-lg border border-slate-200 bg-white p-4 lg:block dark:border-slate-800 dark:bg-slate-900`}
+          className={`${isFiltersOpen ? 'block' : 'hidden'} h-fit rounded-lg border border-slate-200 bg-white p-4 lg:block dark:border-slate-800 dark:bg-slate-900`}
         >
-          <FilterPanel filters={filters} onChange={setFilters} onReset={handleReset} />
+          <FilterPanel filters={filters} onChange={setFilters} onReset={resetSearch} />
         </aside>
         <section aria-label="Results" aria-live="polite">
           <ArticleResults
             query={query}
             emptyDescription="No articles match your keyword and filters. Try widening the date range or removing a filter."
             emptyAction={
-              <Button variant="secondary" onClick={handleReset}>
+              <Button variant="secondary" onClick={resetSearch}>
                 Clear all filters
               </Button>
             }

@@ -10,7 +10,7 @@ interface Props {
   /** A page is loading or about to be (nothing else is rendered as loading). */
   isLoading: boolean;
   /** Auto-loading stopped; the next page only loads on request. */
-  paused: boolean;
+  isPaused: boolean;
   onLoadOlder: () => void;
   isError: boolean;
   onRetry: () => void;
@@ -23,7 +23,7 @@ export function InfiniteScrollFooter({
   loadedCount,
   hasNextPage,
   isLoading,
-  paused,
+  isPaused,
   onLoadOlder,
   isError,
   onRetry,
@@ -31,7 +31,7 @@ export function InfiniteScrollFooter({
 }: Props) {
   return (
     <div className="mt-6 space-y-4">
-      {hasNextPage && !paused && <div ref={setSentinel} aria-hidden="true" />}
+      {hasNextPage && !isPaused && <div ref={setSentinel} aria-hidden="true" />}
 
       <p aria-live="polite" className="sr-only">
         {isLoading ? 'Loading more articles' : `${loadedCount} articles loaded`}
@@ -47,7 +47,7 @@ export function InfiniteScrollFooter({
             Retry
           </Button>
         </div>
-      ) : paused ? (
+      ) : isPaused ? (
         // With nothing loaded the empty state carries this action instead.
         loadedCount > 0 && (
           <div className="flex flex-col items-center gap-3 text-center text-sm text-slate-500 dark:text-slate-400">

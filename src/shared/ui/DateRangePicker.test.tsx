@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { format, subDays } from 'date-fns';
 import { DateRangePicker } from './DateRangePicker';
 
-const iso = (d: Date) => format(d, 'yyyy-MM-dd');
+const iso = (date: Date) => format(date, 'yyyy-MM-dd');
 
 describe('DateRangePicker', () => {
   it('shows a placeholder and no clear button without a range', () => {

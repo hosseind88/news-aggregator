@@ -37,7 +37,7 @@ export class SourceExhaustedError extends Error {
 /** Every source that was asked failed, so there is nothing to show. */
 export class AllSourcesFailedError extends Error {
   constructor(readonly failures: SourceFailure[]) {
-    super(failures.map((f) => `${f.sourceName}: ${f.message}`).join(' · '));
+    super(failures.map((failure) => `${failure.sourceName}: ${failure.message}`).join(' · '));
     this.name = 'AllSourcesFailedError';
   }
 }

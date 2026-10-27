@@ -16,7 +16,7 @@ const setup = (initialUrl = '/search') => {
     articles: [makeArticle({ id: '1', title: 'Result headline', url: 'https://x.com/1' })],
     failures: [],
   });
-  const service: NewsService = { providers: [], search };
+  const service: NewsService = { providerSummaries: [], search };
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
@@ -120,7 +120,7 @@ describe('SearchPage', () => {
     });
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <NewsServiceProvider service={{ providers: [], search }}>
+        <NewsServiceProvider service={{ providerSummaries: [], search }}>
           <TestRouter>
             <SearchPage />
           </TestRouter>

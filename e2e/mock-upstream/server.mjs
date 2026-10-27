@@ -53,8 +53,8 @@ let modes;
 let log;
 let nytCalls;
 const reset = () => {
-  datasets = Object.fromEntries(SOURCES.map((s) => [s, generate(s)]));
-  modes = Object.fromEntries(SOURCES.map((s) => [s, { mode: 'ok', delayMs: 3000 }]));
+  datasets = Object.fromEntries(SOURCES.map((source) => [source, generate(source)]));
+  modes = Object.fromEntries(SOURCES.map((source) => [source, { mode: 'ok', delayMs: 3000 }]));
   log = [];
   nytCalls = [];
 };
@@ -67,10 +67,10 @@ const send = (res, status, body, headers = {}) => {
 const readBody = (req) =>
   new Promise((resolve) => {
     let raw = '';
-    req.on('data', (c) => (raw += c));
+    req.on('data', (chunk) => (raw += chunk));
     req.on('end', () => resolve(raw ? JSON.parse(raw) : {}));
   });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const parseBound = (value, endOfDay) => {
   if (!value) return undefined;
@@ -78,14 +78,14 @@ const parseBound = (value, endOfDay) => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return Date.parse(`${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}Z`);
   }
-  const t = Date.parse(value);
-  return Number.isNaN(t) ? undefined : t;
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? undefined : time;
 };
 
 const SOURCE_BYLINE = {
-  newsapi: (a) => a.author ?? `Reporter ${a.title.length % 5}`,
-  guardian: (a) => a.author ?? `Staff Writer ${a.title.length % 4}`,
-  nyt: (a) => `By ${a.author ?? `Desk Writer ${a.title.length % 3}`}`,
+  newsapi: (article) => article.author ?? `Reporter ${article.title.length % 5}`,
+  guardian: (article) => article.author ?? `Staff Writer ${article.title.length % 4}`,
+  nyt: (article) => `By ${article.author ?? `Desk Writer ${article.title.length % 3}`}`,
 };
 
 /**
@@ -93,28 +93,28 @@ const SOURCE_BYLINE = {
  * Phrases match the byline (Guardian: when query-fields includes byline; NYT: always, as a
  * phrase search); anything else is a plain title keyword.
  */
-const matchesQuery = (a, q, byline) => {
+const matchesQuery = (article, q, byline) => {
   if (!q) return true;
   const authorGroup = q.match(/^\(((?:"[^"]+"(?: OR )?)+)\)(?: AND \((.*)\))?$/);
-  if (!authorGroup) return a.title.toLowerCase().includes(q.toLowerCase());
-  const names = [...authorGroup[1].matchAll(/"([^"]+)"/g)].map((m) => m[1].toLowerCase());
+  if (!authorGroup) return article.title.toLowerCase().includes(q.toLowerCase());
+  const names = [...authorGroup[1].matchAll(/"([^"]+)"/g)].map((match) => match[1].toLowerCase());
   const keyword = authorGroup[2];
-  if (keyword && !a.title.toLowerCase().includes(keyword.toLowerCase())) return false;
+  if (keyword && !article.title.toLowerCase().includes(keyword.toLowerCase())) return false;
   return names.some((name) => byline.toLowerCase().includes(name));
 };
 
 const filter = (items, { q, from, to, section, byline }) =>
-  items.filter((a) => {
-    const t = Date.parse(a.publishedAt);
-    if (!matchesQuery(a, q, byline?.(a) ?? '')) return false;
-    if (section && !section.includes(a.section)) return false;
-    if (from !== undefined && t < from) return false;
-    if (to !== undefined && t > to) return false;
+  items.filter((article) => {
+    const time = Date.parse(article.publishedAt);
+    if (!matchesQuery(article, q, byline?.(article) ?? '')) return false;
+    if (section && !section.includes(article.section)) return false;
+    if (from !== undefined && time < from) return false;
+    if (to !== undefined && time > to) return false;
     return true;
   });
 
 const host = (source) => `https://example.test/${source}`;
-const slug = (a) => a.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+const slug = (article) => article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
 /** Applies the per-source failure mode; returns true when the response was already sent. */
 const applyMode = async (source, res) => {
@@ -126,7 +126,7 @@ const applyMode = async (source, res) => {
   if (mode === 'malformed') return (send(res, 200, { unexpected: true }), true);
   if (mode === 'strict-rate' && source === 'nyt') {
     const now = Date.now();
-    nytCalls = nytCalls.filter((t) => now - t < 60_000);
+    nytCalls = nytCalls.filter((calledAt) => now - calledAt < 60_000);
     if (nytCalls.length >= 5) {
       return (
         send(res, 429, {
@@ -144,9 +144,9 @@ const handlers = {
   async newsapi(url, req, res) {
     if (!req.headers['x-api-key'])
       return send(res, 401, { status: 'error', code: 'apiKeyMissing' });
-    const p = url.searchParams;
-    const page = Number(p.get('page') ?? 1);
-    const pageSize = Number(p.get('pageSize') ?? 20);
+    const params = url.searchParams;
+    const page = Number(params.get('page') ?? 1);
+    const pageSize = Number(params.get('pageSize') ?? 20);
     if (page * pageSize > 100) {
       return send(res, 426, {
         status: 'error',
@@ -157,42 +157,46 @@ const handlers = {
     }
     const headlines = url.pathname.endsWith('/top-headlines');
     const all = filter(datasets.newsapi, {
-      q: p.get('q') === 'news' ? undefined : p.get('q'),
-      from: parseBound(p.get('from')),
-      to: parseBound(p.get('to'), true),
-      section: headlines ? p.get('category') : undefined,
+      q: params.get('q') === 'news' ? undefined : params.get('q'),
+      from: parseBound(params.get('from')),
+      to: parseBound(params.get('to'), true),
+      section: headlines ? params.get('category') : undefined,
     });
     const slice = all.slice((page - 1) * pageSize, page * pageSize);
     send(res, 200, {
       status: 'ok',
       totalResults: all.length,
-      articles: slice.map((a) => ({
-        source: { id: null, name: ['BBC News', 'Reuters', 'CNN'][a.title.length % 3] },
-        author: SOURCE_BYLINE.newsapi(a),
-        title: `${a.title} - ${['BBC News', 'Reuters', 'CNN'][a.title.length % 3]}`,
-        description: `Summary for ${a.title}. A reasonably long description so cards have realistic height.`,
-        url: `${host('newsapi')}/${slug(a)}`,
+      articles: slice.map((article) => ({
+        source: { id: null, name: ['BBC News', 'Reuters', 'CNN'][article.title.length % 3] },
+        author: SOURCE_BYLINE.newsapi(article),
+        title: `${article.title} - ${['BBC News', 'Reuters', 'CNN'][article.title.length % 3]}`,
+        description: `Summary for ${article.title}. A reasonably long description so cards have realistic height.`,
+        url: `${host('newsapi')}/${slug(article)}`,
         urlToImage: null,
-        publishedAt: a.publishedAt,
+        publishedAt: article.publishedAt,
       })),
     });
   },
 
   async guardian(url, _req, res) {
-    const p = url.searchParams;
-    if (!p.get('api-key')) return send(res, 401, { message: 'Invalid authentication credentials' });
-    const page = Number(p.get('page') ?? 1);
-    const pageSize = Number(p.get('page-size') ?? 10);
-    const bylineSearch = p.get('query-fields')?.includes('byline');
+    const params = url.searchParams;
+    if (!params.get('api-key'))
+      return send(res, 401, { message: 'Invalid authentication credentials' });
+    const page = Number(params.get('page') ?? 1);
+    const pageSize = Number(params.get('page-size') ?? 10);
+    const bylineSearch = params.get('query-fields')?.includes('byline');
     const all = filter(datasets.guardian, {
       byline: bylineSearch ? SOURCE_BYLINE.guardian : undefined,
-      q: p.get('q'),
-      from: parseBound(p.get('from-date')),
-      to: parseBound(p.get('to-date'), true),
-      section: p
+      q: params.get('q'),
+      from: parseBound(params.get('from-date')),
+      to: parseBound(params.get('to-date'), true),
+      section: params
         .get('section')
         ?.split('|')
-        .map((s) => ({ society: 'health', sport: 'sports', culture: 'entertainment' })[s] ?? s),
+        .map(
+          (section) =>
+            ({ society: 'health', sport: 'sports', culture: 'entertainment' })[section] ?? section,
+        ),
     });
     const pages = Math.max(1, Math.ceil(all.length / pageSize));
     const slice = all.slice((page - 1) * pageSize, page * pageSize);
@@ -203,16 +207,16 @@ const handlers = {
         pageSize,
         currentPage: page,
         pages,
-        results: slice.map((a) => ({
-          id: `${a.section}/${slug(a)}`,
-          sectionId: a.section,
-          sectionName: a.section,
-          webPublicationDate: a.publishedAt,
-          webTitle: a.title,
-          webUrl: `${host('guardian')}/${slug(a)}`,
+        results: slice.map((article) => ({
+          id: `${article.section}/${slug(article)}`,
+          sectionId: article.section,
+          sectionName: article.section,
+          webPublicationDate: article.publishedAt,
+          webTitle: article.title,
+          webUrl: `${host('guardian')}/${slug(article)}`,
           fields: {
-            trailText: `Summary for ${a.title}.`,
-            byline: SOURCE_BYLINE.guardian(a),
+            trailText: `Summary for ${article.title}.`,
+            byline: SOURCE_BYLINE.guardian(article),
           },
         })),
       },
@@ -220,19 +224,19 @@ const handlers = {
   },
 
   async nyt(url, _req, res) {
-    const p = url.searchParams;
-    if (!p.get('api-key'))
+    const params = url.searchParams;
+    if (!params.get('api-key'))
       return send(res, 401, { fault: { faultstring: 'Failed to resolve API Key variable' } });
-    const page = Number(p.get('page') ?? 0);
-    const sectionMatch = p.get('fq')?.match(/section_name:\((.*)\)/)?.[1];
+    const page = Number(params.get('page') ?? 0);
+    const sectionMatch = params.get('fq')?.match(/section_name:\((.*)\)/)?.[1];
     const sections = sectionMatch
-      ? [...sectionMatch.matchAll(/"([^"]+)"/g)].map((m) => m[1].toLowerCase())
+      ? [...sectionMatch.matchAll(/"([^"]+)"/g)].map((match) => match[1].toLowerCase())
       : undefined;
     const all = filter(datasets.nyt, {
       byline: SOURCE_BYLINE.nyt,
-      q: p.get('q'),
-      from: parseBound(p.get('begin_date')),
-      to: parseBound(p.get('end_date'), true),
+      q: params.get('q'),
+      from: parseBound(params.get('begin_date')),
+      to: parseBound(params.get('end_date'), true),
       section: sections,
     });
     const slice = all.slice(page * 10, page * 10 + 10);
@@ -240,15 +244,15 @@ const handlers = {
       status: 'OK',
       response: {
         docs: slice.length
-          ? slice.map((a) => ({
-              _id: `nyt://article/${slug(a)}`,
-              web_url: `${host('nyt')}/${slug(a)}`,
-              headline: { main: a.title },
-              abstract: `Summary for ${a.title}.`,
-              byline: { original: SOURCE_BYLINE.nyt(a) },
-              section_name: a.section[0].toUpperCase() + a.section.slice(1),
-              news_desk: a.section,
-              pub_date: a.publishedAt.replace('Z', '+0000'),
+          ? slice.map((article) => ({
+              _id: `nyt://article/${slug(article)}`,
+              web_url: `${host('nyt')}/${slug(article)}`,
+              headline: { main: article.title },
+              abstract: `Summary for ${article.title}.`,
+              byline: { original: SOURCE_BYLINE.nyt(article) },
+              section_name: article.section[0].toUpperCase() + article.section.slice(1),
+              news_desk: article.section,
+              pub_date: article.publishedAt.replace('Z', '+0000'),
               multimedia: [],
             }))
           : null,
@@ -267,13 +271,17 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/__health') return send(res, 200, { ok: true });
   if (url.pathname === '/__control') {
     const { source, mode, delayMs } = await readBody(req);
-    for (const s of source === '*' ? SOURCES : [source])
-      modes[s] = { mode, delayMs: delayMs ?? 3000 };
+    for (const sourceId of source === '*' ? SOURCES : [source])
+      modes[sourceId] = { mode, delayMs: delayMs ?? 3000 };
     return send(res, 200, modes);
   }
   if (url.pathname === '/__articles') {
     const { source, articles } = await readBody(req);
-    datasets[source] = articles.map((a) => ({ topic: 'custom', section: 'world', ...a }));
+    datasets[source] = articles.map((article) => ({
+      topic: 'custom',
+      section: 'world',
+      ...article,
+    }));
     return send(res, 200, { ok: true, count: datasets[source].length });
   }
 

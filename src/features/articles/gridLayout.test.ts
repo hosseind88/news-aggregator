@@ -1,6 +1,6 @@
 import { GRID_CLASS, trimToFullRows } from './gridLayout';
 
-const items = (n: number) => Array.from({ length: n }, (_, i) => i);
+const items = (count: number) => Array.from({ length: count }, (_, i) => i);
 
 describe('trimToFullRows', () => {
   it('keeps exact multiples untouched', () => {

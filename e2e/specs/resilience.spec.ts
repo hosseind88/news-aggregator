@@ -101,9 +101,9 @@ test.describe('failing and slow sources', () => {
   test('changing filters quickly cancels the superseded requests', async ({ page, upstream }) => {
     await upstream.setMode('*', 'slow', 1500);
     const aborted: string[] = [];
-    page.on('requestfailed', (r) => {
-      if (r.url().includes('/api/') && r.failure()?.errorText.includes('ABORTED')) {
-        aborted.push(r.url());
+    page.on('requestfailed', (request) => {
+      if (request.url().includes('/api/') && request.failure()?.errorText.includes('ABORTED')) {
+        aborted.push(request.url());
       }
     });
     await page.goto('/search');

@@ -12,8 +12,12 @@ import { NytProvider } from './nytProvider';
  * (nginx template and `vite.config.ts`).
  */
 const createProviders = (): NewsProvider[] => {
-  const http = createHttpClient();
-  return [new NewsApiProvider(http), new GuardianProvider(http), new NytProvider(http)];
+  const httpClient = createHttpClient();
+  return [
+    new NewsApiProvider(httpClient),
+    new GuardianProvider(httpClient),
+    new NytProvider(httpClient),
+  ];
 };
 
 export const createNewsService = () => new NewsAggregator(createProviders());

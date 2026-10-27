@@ -3,13 +3,13 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { ErrorBoundary } from '@/shared/ui/ErrorBoundary';
 import { LinearProgress } from '@/shared/ui/LinearProgress';
 
-const NAV = [
+const NAV_ITEMS = [
   { to: '/', label: 'My Feed', end: true },
   { to: '/search', label: 'Search', end: false },
   { to: '/preferences', label: 'Preferences', end: false },
 ];
 
-const linkClass = ({ isActive }: { isActive: boolean }) =>
+const getLinkClassName = ({ isActive }: { isActive: boolean }) =>
   `rounded-md px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-blue-600 ${
     isActive
       ? 'bg-blue-700 text-white dark:bg-blue-500 dark:text-slate-950'
@@ -29,8 +29,8 @@ export function AppLayout() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3">
           <span className="font-serif text-xl font-bold tracking-tight">Newsroom</span>
           <nav aria-label="Main" className="flex gap-1">
-            {NAV.map(({ to, label, end }) => (
-              <NavLink key={to} to={to} end={end} className={linkClass}>
+            {NAV_ITEMS.map(({ to, label, end }) => (
+              <NavLink key={to} to={to} end={end} className={getLinkClassName}>
                 {label}
               </NavLink>
             ))}

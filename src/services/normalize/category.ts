@@ -72,14 +72,14 @@ const ALIASES: Record<string, Category> = {
   games: 'entertainment',
 };
 
-const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+const toSlug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /** First candidate (e.g. sectionId, then sectionName) that maps to a known Category. */
 export const normalizeCategory = (
   ...candidates: (string | null | undefined)[]
 ): Category | undefined => {
   for (const candidate of candidates) {
-    const category = candidate ? ALIASES[slug(candidate)] : undefined;
+    const category = candidate ? ALIASES[toSlug(candidate)] : undefined;
     if (category) return category;
   }
   return undefined;

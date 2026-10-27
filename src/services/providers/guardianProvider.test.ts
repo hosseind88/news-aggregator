@@ -33,7 +33,7 @@ describe('GuardianProvider', () => {
     const { provider } = setup();
     const { articles } = await provider.search(REQ);
 
-    expect(articles.map((a) => a.category)).toEqual([
+    expect(articles.map((article) => article.category)).toEqual([
       'business',
       'world',
       'entertainment',

@@ -60,11 +60,11 @@ export function ArticleImage({ src, alt, source, label }: Props) {
   // Track by src so a changed URL gets a fresh attempt, while a failed one is never retried.
   const [failedSrc, setFailedSrc] = useState<string>();
   const [loadedSrc, setLoadedSrc] = useState<string>();
-  const valid = isHttpUrl(src);
-  const failed = !valid || failedSrc === src;
-  const loaded = valid && loadedSrc === src;
+  const hasValidSrc = isHttpUrl(src);
+  const hasFailed = !hasValidSrc || failedSrc === src;
+  const isLoaded = hasValidSrc && loadedSrc === src;
 
-  const check = (img: HTMLImageElement) => {
+  const recordImageResult = (img: HTMLImageElement) => {
     if (!img.complete) return;
     if (img.naturalWidth < MIN_SIZE || img.naturalHeight < MIN_SIZE) setFailedSrc(src);
     else setLoadedSrc(src);
@@ -72,11 +72,11 @@ export function ArticleImage({ src, alt, source, label }: Props) {
 
   return (
     <div className="relative aspect-video w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-      {failed ? (
+      {hasFailed ? (
         <Placeholder source={source} label={label} />
       ) : (
         <>
-          {!loaded && (
+          {!isLoaded && (
             <div
               aria-hidden="true"
               data-testid="image-skeleton"
@@ -92,11 +92,11 @@ export function ArticleImage({ src, alt, source, label }: Props) {
             referrerPolicy="no-referrer"
             ref={(img) => {
               // Covers images already complete (cached) before React attached onLoad.
-              if (img && !loaded) check(img);
+              if (img && !isLoaded) recordImageResult(img);
             }}
-            onLoad={(e: SyntheticEvent<HTMLImageElement>) => check(e.currentTarget)}
+            onLoad={(e: SyntheticEvent<HTMLImageElement>) => recordImageResult(e.currentTarget)}
             onError={() => setFailedSrc(src)}
-            className={`absolute inset-0 size-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 size-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
           />
         </>
       )}

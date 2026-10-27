@@ -52,9 +52,9 @@ const renderPaged = (initial: ArticlesQuery) => {
   const view = render(ui(initial));
   return (query: ArticlesQuery) => view.rerender(ui(query));
 };
-const pages = (n: number) =>
+const pages = (count: number) =>
   ({
-    data: { pages: Array.from({ length: n }, () => ({})), pageParams: [] },
+    data: { pages: Array.from({ length: count }, () => ({})), pageParams: [] },
   }) as unknown as Partial<ArticlesQuery>;
 
 describe('ArticleResults footer', () => {

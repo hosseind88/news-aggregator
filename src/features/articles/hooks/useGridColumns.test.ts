@@ -18,7 +18,7 @@ function mockViewport(initialWidth: number) {
     listeners,
     resize(next: number) {
       width = next;
-      listeners.forEach((l) => l());
+      listeners.forEach((listener) => listener());
     },
   };
 }

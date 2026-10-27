@@ -57,21 +57,21 @@ export function ArticleResults({
     () => trimToFullRows(articles, columns, hasNextPage),
     [articles, columns, hasNextPage],
   );
-  const { exhausted } = useAutoLoadBudget({
+  const { isBudgetExhausted } = useAutoLoadBudget({
     resetKey: query.filtersKey,
     count: articles.length,
     minGain: columns,
     pages: query.data?.pages.length ?? 0,
   });
   // Auto-loading stops after a few pages that showed nothing new; the user decides to go on.
-  const stalled = exhausted && hasNextPage;
+  const isStalled = isBudgetExhausted && hasNextPage;
   // Nothing to show yet but the next page is already on its way: that is loading, not "empty".
-  const scanning = articles.length === 0 && hasNextPage && !stalled;
+  const isScanning = articles.length === 0 && hasNextPage && !isStalled;
   const setSentinel = useInfiniteScroll({
     onLoadMore: () => void fetchNextPage(),
     hasNextPage,
     isFetching,
-    disabled: isFetchNextPageError || stalled,
+    disabled: isFetchNextPageError || isStalled,
     revision: query.dataUpdatedAt,
   });
 
@@ -94,7 +94,7 @@ export function ArticleResults({
     return (
       <ErrorState
         title="Could not load news"
-        message={failures.map((f) => `${f.sourceName}: ${f.message}`).join(' · ')}
+        message={failures.map((failure) => `${failure.sourceName}: ${failure.message}`).join(' · ')}
         onRetry={() => void query.refetch()}
       />
     );
@@ -104,7 +104,7 @@ export function ArticleResults({
     <>
       <SourceFailureNotice failures={failures} />
       {articles.length === 0 ? (
-        scanning || isFetchingNextPage ? null : stalled ? (
+        isScanning || isFetchingNextPage ? null : isStalled ? (
           <EmptyState
             title={stalledTitle}
             description={stalledDescription}
@@ -131,8 +131,8 @@ export function ArticleResults({
         columns={columns}
         loadedCount={articles.length}
         hasNextPage={hasNextPage}
-        isLoading={isFetchingNextPage || scanning}
-        paused={stalled && !isFetchingNextPage}
+        isLoading={isFetchingNextPage || isScanning}
+        isPaused={isStalled && !isFetchingNextPage}
         onLoadOlder={() => void fetchNextPage()}
         isError={isFetchNextPageError}
         onRetry={() => void fetchNextPage()}

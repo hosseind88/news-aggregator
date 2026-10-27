@@ -4,8 +4,8 @@ const fixOffset = (value: string) => value.replace(/([+-]\d{2})(\d{2})$/, '$1:$2
 /** Any API timestamp -> ISO-8601 UTC (`2024-05-02T10:00:00.000Z`), or undefined if unparseable. */
 export const normalizeDate = (raw: string | null | undefined): string | undefined => {
   if (!raw) return undefined;
-  const time = Date.parse(fixOffset(raw.trim()));
-  return Number.isNaN(time) ? undefined : new Date(time).toISOString();
+  const timestampMs = Date.parse(fixOffset(raw.trim()));
+  return Number.isNaN(timestampMs) ? undefined : new Date(timestampMs).toISOString();
 };
 
 /**
@@ -42,10 +42,10 @@ export const toUtcDayStamp = (date: Date): string =>
 
 /** Whether a normalised timestamp falls inside the inclusive local-day range. */
 export const isWithinDateRange = (iso: string, from?: string, to?: string): boolean => {
-  const time = Date.parse(iso);
+  const timestampMs = Date.parse(iso);
   const start = startOfLocalDay(from);
   const end = endOfLocalDay(to);
-  if (start && time < start.getTime()) return false;
-  if (end && time > end.getTime()) return false;
+  if (start && timestampMs < start.getTime()) return false;
+  if (end && timestampMs > end.getTime()) return false;
   return true;
 };

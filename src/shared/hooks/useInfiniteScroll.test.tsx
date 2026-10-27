@@ -43,45 +43,45 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('useInfiniteScroll', () => {
   it('observes the sentinel with a 400px margin and loads when it intersects', () => {
-    const p = props();
-    render(<Harness {...p} />);
+    const scrollProps = props();
+    render(<Harness {...scrollProps} />);
 
     expect(observers).toHaveLength(1);
     expect(firstObserver().options.rootMargin).toBe('400px');
     act(() => firstObserver().trigger());
-    expect(p.onLoadMore).toHaveBeenCalledTimes(1);
+    expect(scrollProps.onLoadMore).toHaveBeenCalledTimes(1);
   });
 
   it('ignores non-intersecting entries', () => {
-    const p = props();
-    render(<Harness {...p} />);
+    const scrollProps = props();
+    render(<Harness {...scrollProps} />);
     act(() => firstObserver().trigger(false));
-    expect(p.onLoadMore).not.toHaveBeenCalled();
+    expect(scrollProps.onLoadMore).not.toHaveBeenCalled();
   });
 
   it('does not observe while fetching, and re-observes afterwards', () => {
-    const p = props({ isFetching: true });
-    const { rerender } = render(<Harness {...p} />);
+    const scrollProps = props({ isFetching: true });
+    const { rerender } = render(<Harness {...scrollProps} />);
     expect(observers).toHaveLength(0);
 
-    rerender(<Harness {...p} isFetching={false} />);
+    rerender(<Harness {...scrollProps} isFetching={false} />);
     expect(observers).toHaveLength(1);
   });
 
   it('re-observes when new data lands even if isFetching never visibly toggled', () => {
-    const p = props({ revision: 1 });
-    const { rerender } = render(<Harness {...p} />);
+    const scrollProps = props({ revision: 1 });
+    const { rerender } = render(<Harness {...scrollProps} />);
     expect(observers).toHaveLength(1);
 
-    rerender(<Harness {...p} revision={2} />);
+    rerender(<Harness {...scrollProps} revision={2} />);
     expect(firstObserver().disconnect).toHaveBeenCalled();
     expect(observers).toHaveLength(2);
   });
 
   it('disconnects when there are no more pages', () => {
-    const p = props();
-    const { rerender } = render(<Harness {...p} />);
-    rerender(<Harness {...p} hasNextPage={false} />);
+    const scrollProps = props();
+    const { rerender } = render(<Harness {...scrollProps} />);
+    rerender(<Harness {...scrollProps} hasNextPage={false} />);
     expect(firstObserver().disconnect).toHaveBeenCalled();
     expect(observers).toHaveLength(1);
   });

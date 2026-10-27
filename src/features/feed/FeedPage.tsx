@@ -9,20 +9,22 @@ import { usePreferences } from '@/features/preferences/usePreferences';
 
 export function FeedPage() {
   const { sources, categories, authors, hasPreferences } = usePreferences();
-  const [onlyFollowed, setOnlyFollowed] = useState(false);
+  const [isOnlyFollowed, setIsOnlyFollowed] = useState(false);
   useDocumentTitle(hasPreferences ? 'My Feed' : 'Latest news');
 
   const query = useArticles({
     sources: sources.length ? sources : undefined,
     categories: categories.length ? categories : undefined,
     // Pushed to the sources that can filter by byline; the rest is matched client-side.
-    authors: onlyFollowed ? authors : undefined,
+    authors: isOnlyFollowed ? authors : undefined,
   });
 
-  const visible = useMemo(() => {
-    const ordered = prioritiseAuthors(query.articles, authors);
-    return onlyFollowed ? ordered.filter((a) => isByAuthor(a, authors)) : ordered;
-  }, [query.articles, authors, onlyFollowed]);
+  const visibleArticles = useMemo(() => {
+    const orderedArticles = prioritiseAuthors(query.articles, authors);
+    return isOnlyFollowed
+      ? orderedArticles.filter((article) => isByAuthor(article, authors))
+      : orderedArticles;
+  }, [query.articles, authors, isOnlyFollowed]);
 
   return (
     <div className="space-y-6">
@@ -41,8 +43,8 @@ export function FeedPage() {
           <label className="flex items-center gap-2 text-sm font-medium">
             <input
               type="checkbox"
-              checked={onlyFollowed}
-              onChange={(e) => setOnlyFollowed(e.target.checked)}
+              checked={isOnlyFollowed}
+              onChange={(e) => setIsOnlyFollowed(e.target.checked)}
               className="size-4 accent-blue-700"
             />
             Only followed authors
@@ -62,20 +64,20 @@ export function FeedPage() {
 
       <ArticleResults
         query={query}
-        articles={visible}
+        articles={visibleArticles}
         isFollowed={(article) => isByAuthor(article, authors)}
         stalledTitle="No recent articles from your followed authors"
         stalledDescription="The latest articles from every source were not written by anyone you follow. Search older articles, or show everything."
         emptyAction={
-          onlyFollowed ? (
-            <Button variant="secondary" onClick={() => setOnlyFollowed(false)}>
+          isOnlyFollowed ? (
+            <Button variant="secondary" onClick={() => setIsOnlyFollowed(false)}>
               Show all articles
             </Button>
           ) : undefined
         }
-        emptyTitle={onlyFollowed ? 'No articles from followed authors yet' : 'No articles found'}
+        emptyTitle={isOnlyFollowed ? 'No articles from followed authors yet' : 'No articles found'}
         emptyDescription={
-          onlyFollowed
+          isOnlyFollowed
             ? 'Turn off the filter to see all articles.'
             : 'Try different preferences or check back later.'
         }

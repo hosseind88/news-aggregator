@@ -14,11 +14,12 @@ export type { ArticleFilters };
  */
 export function useArticles(filters: ArticleFilters, { enabled = true } = {}) {
   const service = useNewsService();
-  const normalized = useMemo(() => normalizeFilters(filters), [filters]);
+  const normalizedFilters = useMemo(() => normalizeFilters(filters), [filters]);
 
   const query = useInfiniteQuery({
-    queryKey: ['articles', normalized],
-    queryFn: ({ pageParam, signal }) => service.search(normalized, { cursor: pageParam, signal }),
+    queryKey: ['articles', normalizedFilters],
+    queryFn: ({ pageParam, signal }) =>
+      service.search(normalizedFilters, { cursor: pageParam, signal }),
     initialPageParam: undefined as AggregatorCursor | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     // Every source was already tried and failed; repeating the call just burns rate limits.
@@ -28,17 +29,17 @@ export function useArticles(filters: ArticleFilters, { enabled = true } = {}) {
 
   const { articles, failures } = useMemo(() => {
     const pages = query.data?.pages ?? [];
-    const bySource = new Map<SourceId, SourceFailure>();
+    const failureBySource = new Map<SourceId, SourceFailure>();
     pages
       .flatMap((page) => page.failures)
-      .forEach((failure) => bySource.set(failure.source, failure));
+      .forEach((failure) => failureBySource.set(failure.source, failure));
     return {
       articles: dedupeArticles(pages.flatMap((page) => page.articles)),
-      failures: [...bySource.values()],
+      failures: [...failureBySource.values()],
     };
   }, [query.data]);
 
-  return { ...query, articles, failures, filtersKey: JSON.stringify(normalized) };
+  return { ...query, articles, failures, filtersKey: JSON.stringify(normalizedFilters) };
 }
 
 export type ArticlesQuery = ReturnType<typeof useArticles>;

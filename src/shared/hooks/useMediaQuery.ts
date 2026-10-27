@@ -1,20 +1,21 @@
 import { useEffect, useState } from 'react';
 
-const supported = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+const isMatchMediaSupported = () =>
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function';
 
 /** Tracks a CSS media query; false where matchMedia is unavailable (SSR, jsdom). */
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() =>
-    supported() ? window.matchMedia(query).matches : false,
+    isMatchMediaSupported() ? window.matchMedia(query).matches : false,
   );
 
   useEffect(() => {
-    if (!supported()) return;
-    const mql = window.matchMedia(query);
-    const onChange = () => setMatches(mql.matches);
-    onChange();
-    mql.addEventListener('change', onChange);
-    return () => mql.removeEventListener('change', onChange);
+    if (!isMatchMediaSupported()) return;
+    const mediaQueryList = window.matchMedia(query);
+    const handleMediaChange = () => setMatches(mediaQueryList.matches);
+    handleMediaChange();
+    mediaQueryList.addEventListener('change', handleMediaChange);
+    return () => mediaQueryList.removeEventListener('change', handleMediaChange);
   }, [query]);
 
   return matches;

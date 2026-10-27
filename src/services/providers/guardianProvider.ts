@@ -3,10 +3,10 @@ import type { Article, Category, NewsProvider, ProviderRequest, SourcePage } fro
 import type { HttpClient } from '@/services/http/httpClient';
 import { createArticle } from '@/services/normalize';
 import {
-  authorQuery,
-  dayEndInstant,
-  dayStartInstant,
-  parseItems,
+  buildAuthorQuery,
+  getDayEndInstant,
+  getDayStartInstant,
+  parseValidItems,
   supportedCategoriesOf,
 } from './shared';
 
@@ -80,12 +80,12 @@ export class GuardianProvider implements NewsProvider {
     const payload = await this.http.getJson(
       '/api/guardian/search',
       {
-        q: authorQuery(authors, keyword),
+        q: buildAuthorQuery(authors, keyword),
         // Contributor tag slugs are not derivable from names, so search the byline field
         // (plus headline/body when a keyword has to match too).
         'query-fields': authors.length ? (keyword ? 'byline,headline,body' : 'byline') : undefined,
-        'from-date': dayStartInstant(from),
-        'to-date': dayEndInstant(to),
+        'from-date': getDayStartInstant(from),
+        'to-date': getDayEndInstant(to),
         section: categories.map((category) => SECTION_MAP[category]).join('|') || undefined,
         'order-by': 'newest',
         'show-fields': 'thumbnail,trailText,byline',
@@ -96,7 +96,7 @@ export class GuardianProvider implements NewsProvider {
     );
     const { response } = responseSchema.parse(payload);
     return {
-      articles: parseItems(resultSchema, response.results).flatMap(
+      articles: parseValidItems(resultSchema, response.results).flatMap(
         (item) => mapGuardianResult(item) ?? [],
       ),
       hasMore: response.results.length > 0 && page < (response.pages ?? page),

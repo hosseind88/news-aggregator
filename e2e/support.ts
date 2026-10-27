@@ -39,10 +39,14 @@ export { expect };
 export const cards = (page: Page) => page.locator('article');
 
 export const cardTimes = (page: Page) =>
-  page.$$eval('article time', (els) => els.map((e) => e.getAttribute('datetime') ?? ''));
+  page.$$eval('article time', (elements) =>
+    elements.map((element) => element.getAttribute('datetime') ?? ''),
+  );
 
 export const cardTitles = (page: Page) =>
-  page.$$eval('article h3', (els) => els.map((e) => e.textContent?.trim() ?? ''));
+  page.$$eval('article h3', (elements) =>
+    elements.map((element) => element.textContent?.trim() ?? ''),
+  );
 
 /** Scrolls to the bottom until the end marker appears (or the list stops growing). */
 export async function scrollToEnd(page: Page, maxSteps = 200) {
@@ -53,15 +57,16 @@ export async function scrollToEnd(page: Page, maxSteps = 200) {
     if (await end.count()) return;
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await page.waitForTimeout(150);
-    const n = await cards(page).count();
-    if (n === last) {
+    const count = await cards(page).count();
+    if (count === last) {
       if (++stalls > 30) return;
     } else {
       stalls = 0;
-      last = n;
+      last = count;
     }
   }
 }
 
 export const inversions = (isoTimes: string[]) =>
-  isoTimes.filter((t, i) => i > 0 && Date.parse(t) > Date.parse(isoTimes[i - 1] ?? t)).length;
+  isoTimes.filter((time, i) => i > 0 && Date.parse(time) > Date.parse(isoTimes[i - 1] ?? time))
+    .length;

@@ -8,13 +8,15 @@ import { NewsServiceProvider } from '@/services/NewsServiceContext';
 
 // Each page is its own chunk, so the first paint only ships the route being visited.
 const FeedPage = lazy(() =>
-  import('@/features/feed/FeedPage').then((m) => ({ default: m.FeedPage })),
+  import('@/features/feed/FeedPage').then((lazyModule) => ({ default: lazyModule.FeedPage })),
 );
 const SearchPage = lazy(() =>
-  import('@/features/search/SearchPage').then((m) => ({ default: m.SearchPage })),
+  import('@/features/search/SearchPage').then((lazyModule) => ({ default: lazyModule.SearchPage })),
 );
 const PreferencesPage = lazy(() =>
-  import('@/features/preferences/PreferencesPage').then((m) => ({ default: m.PreferencesPage })),
+  import('@/features/preferences/PreferencesPage').then((lazyModule) => ({
+    default: lazyModule.PreferencesPage,
+  })),
 );
 
 const createQueryClient = () =>

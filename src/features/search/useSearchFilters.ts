@@ -12,55 +12,55 @@ const isOneOf =
 const parseList = <T extends string>(raw: string | null, allowed: readonly T[]): T[] =>
   (raw?.split(',') ?? []).filter(isOneOf(allowed));
 
-const parseDay = (raw: string | null) =>
+const parseDayParam = (raw: string | null) =>
   isValidDay(raw ?? undefined) ? (raw ?? undefined) : undefined;
 
-const toParam = (value: unknown): string | undefined => {
+const toParamValue = (value: unknown): string | undefined => {
   if (Array.isArray(value)) return value.length ? value.join(',') : undefined;
   return typeof value === 'string' && value ? value : undefined;
 };
 
 /** Search filters stored in the URL query string, so results are shareable and survive reloads. */
 export function useSearchFilters() {
-  const [params, setParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const filters = useMemo<ArticleFilters>(
     () => ({
-      keyword: params.get('q') ?? undefined,
-      from: parseDay(params.get('from')),
-      to: parseDay(params.get('to')),
-      categories: parseList<Category>(params.get('categories'), CATEGORIES),
-      sources: parseList<SourceId>(params.get('sources'), SOURCE_IDS),
+      keyword: searchParams.get('q') ?? undefined,
+      from: parseDayParam(searchParams.get('from')),
+      to: parseDayParam(searchParams.get('to')),
+      categories: parseList<Category>(searchParams.get('categories'), CATEGORIES),
+      sources: parseList<SourceId>(searchParams.get('sources'), SOURCE_IDS),
     }),
-    [params],
+    [searchParams],
   );
 
   const setFilters = useCallback(
     (patch: Partial<ArticleFilters>) => {
-      setParams(
+      setSearchParams(
         (current) => {
           const next = new URLSearchParams(current);
-          const keys = {
+          const paramKeyByFilter = {
             keyword: 'q',
             from: 'from',
             to: 'to',
             categories: 'categories',
             sources: 'sources',
           } as const;
-          (Object.keys(patch) as (keyof typeof keys)[]).forEach((key) => {
-            const value = toParam(patch[key]);
-            if (value) next.set(keys[key], value);
-            else next.delete(keys[key]);
+          (Object.keys(patch) as (keyof typeof paramKeyByFilter)[]).forEach((key) => {
+            const value = toParamValue(patch[key]);
+            if (value) next.set(paramKeyByFilter[key], value);
+            else next.delete(paramKeyByFilter[key]);
           });
           return next;
         },
         { replace: true },
       );
     },
-    [setParams],
+    [setSearchParams],
   );
 
-  const reset = useCallback(() => setParams({}, { replace: true }), [setParams]);
+  const resetFilters = useCallback(() => setSearchParams({}, { replace: true }), [setSearchParams]);
 
-  return { filters, setFilters, reset };
+  return { filters, setFilters, resetFilters };
 }

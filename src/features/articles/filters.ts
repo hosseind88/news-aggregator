@@ -9,7 +9,10 @@ import { authorKey, isValidDay } from '@/services/normalize';
 
 export type ArticleFilters = SearchParams & { sources?: SourceId[] };
 
-const unique = <T extends string>(values: readonly T[] | undefined, allowed: readonly T[]) => {
+const pickAllowedValues = <T extends string>(
+  values: readonly T[] | undefined,
+  allowed: readonly T[],
+) => {
   const kept = allowed.filter((value) => values?.includes(value));
   return kept.length ? kept : undefined;
 };
@@ -17,7 +20,7 @@ const unique = <T extends string>(values: readonly T[] | undefined, allowed: rea
 const MAX_AUTHORS = 30;
 
 /** Trimmed, de-duplicated (case-insensitive) and ordered, so equivalent lists share a cache key. */
-const uniqueAuthors = (authors: readonly string[] | undefined) => {
+const dedupeAuthors = (authors: readonly string[] | undefined) => {
   const seen = new Map<string, string>();
   authors?.forEach((raw) => {
     const name = raw.trim().replace(/\s+/g, ' ');
@@ -39,13 +42,13 @@ export const normalizeFilters = (filters: ArticleFilters): ArticleFilters => {
   let to = isValidDay(filters.to) ? filters.to : undefined;
   if (from && to && from > to) [from, to] = [to, from];
 
-  const sources = unique<SourceId>(filters.sources, SOURCE_IDS);
+  const sources = pickAllowedValues<SourceId>(filters.sources, SOURCE_IDS);
   return {
     keyword,
     from,
     to,
-    categories: unique<Category>(filters.categories, CATEGORIES),
-    authors: uniqueAuthors(filters.authors),
+    categories: pickAllowedValues<Category>(filters.categories, CATEGORIES),
+    authors: dedupeAuthors(filters.authors),
     sources: sources?.length === SOURCE_IDS.length ? undefined : sources,
   };
 };

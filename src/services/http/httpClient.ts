@@ -27,11 +27,11 @@ const describeStatus = (status: number): string => {
  */
 export const createHttpClient = (baseUrl = '', timeoutMs = DEFAULT_TIMEOUT_MS): HttpClient => ({
   async getJson(path, params = {}, { signal } = {}) {
-    const search = new URLSearchParams();
+    const searchParams = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined && value !== '') search.set(key, String(value));
+      if (value !== undefined && value !== '') searchParams.set(key, String(value));
     }
-    const query = search.toString();
+    const query = searchParams.toString();
 
     const timeout = AbortSignal.timeout(timeoutMs);
     let response: Response;

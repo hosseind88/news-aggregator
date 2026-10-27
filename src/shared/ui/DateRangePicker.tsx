@@ -18,14 +18,14 @@ const ISO = 'yyyy-MM-dd';
 const NEWSAPI_WINDOW_DAYS = 30;
 
 // ISO strings are parsed/formatted as local calendar dates so they never shift with the time zone.
-const toDate = (iso?: string): Date | undefined => {
+const parseIsoDay = (iso?: string): Date | undefined => {
   if (!iso) return undefined;
   const date = parse(iso, ISO, new Date());
   return isValid(date) ? date : undefined;
 };
-const toIso = (date?: Date): string | undefined => (date ? format(date, ISO) : undefined);
+const formatIsoDay = (date?: Date): string | undefined => (date ? format(date, ISO) : undefined);
 
-const label = (from?: Date, to?: Date): string => {
+const formatRangeLabel = (from?: Date, to?: Date): string => {
   if (!from && !to) return 'Any date';
   if (from && to) {
     const sameYear = from.getFullYear() === to.getFullYear();
@@ -37,14 +37,20 @@ const label = (from?: Date, to?: Date): string => {
 };
 
 const PRESETS: { name: string; range: (today: Date) => DateRange }[] = [
-  { name: 'Today', range: (t) => ({ from: toIso(t), to: toIso(t) }) },
-  { name: 'Last 7 days', range: (t) => ({ from: toIso(subDays(t, 6)), to: toIso(t) }) },
-  { name: 'Last 30 days', range: (t) => ({ from: toIso(subDays(t, 29)), to: toIso(t) }) },
+  { name: 'Today', range: (today) => ({ from: formatIsoDay(today), to: formatIsoDay(today) }) },
+  {
+    name: 'Last 7 days',
+    range: (today) => ({ from: formatIsoDay(subDays(today, 6)), to: formatIsoDay(today) }),
+  },
+  {
+    name: 'Last 30 days',
+    range: (today) => ({ from: formatIsoDay(subDays(today, 29)), to: formatIsoDay(today) }),
+  },
   {
     name: 'This month',
-    range: (t) => ({
-      from: toIso(startOfMonth(t)),
-      to: toIso(endOfMonth(t) > t ? t : endOfMonth(t)),
+    range: (today) => ({
+      from: formatIsoDay(startOfMonth(today)),
+      to: formatIsoDay(endOfMonth(today) > today ? today : endOfMonth(today)),
     }),
   },
 ];
@@ -95,21 +101,21 @@ const presetButton =
 
 export function DateRangePicker({ from, to, onChange }: Props) {
   const [open, setOpen] = useState(false);
-  const wide = useMediaQuery('(min-width: 768px)');
+  const isWideViewport = useMediaQuery('(min-width: 768px)');
 
-  const fromDate = toDate(from);
-  const toDateValue = toDate(to);
+  const fromDate = parseIsoDay(from);
+  const toDateValue = parseIsoDay(to);
   const today = startOfToday();
   const hasRange = Boolean(from || to);
-  const summary = label(fromDate, toDateValue);
+  const summary = formatRangeLabel(fromDate, toDateValue);
   const newsApiCutoff = subDays(today, NEWSAPI_WINDOW_DAYS);
-  const beyondNewsApi = Boolean(fromDate && fromDate < newsApiCutoff);
+  const isBeyondNewsApiWindow = Boolean(fromDate && fromDate < newsApiCutoff);
 
-  const apply = (range: DateRange) => onChange(range);
+  const applyRange = (range: DateRange) => onChange(range);
 
-  const onSelect = (selected: DayRange | undefined) => {
-    const next = { from: toIso(selected?.from), to: toIso(selected?.to) };
-    apply(next);
+  const handleDaySelect = (selected: DayRange | undefined) => {
+    const next = { from: formatIsoDay(selected?.from), to: formatIsoDay(selected?.to) };
+    applyRange(next);
     if (next.from && next.to) setOpen(false);
   };
 
@@ -139,7 +145,7 @@ export function DateRangePicker({ from, to, onChange }: Props) {
             <button
               type="button"
               aria-label="Clear date range"
-              onClick={() => apply({})}
+              onClick={() => applyRange({})}
               className="absolute right-1.5 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             >
               <span aria-hidden="true">×</span>
@@ -162,7 +168,7 @@ export function DateRangePicker({ from, to, onChange }: Props) {
                     type="button"
                     className={presetButton}
                     onClick={() => {
-                      apply(preset.range(today));
+                      applyRange(preset.range(today));
                       setOpen(false);
                     }}
                   >
@@ -173,7 +179,7 @@ export function DateRangePicker({ from, to, onChange }: Props) {
                   type="button"
                   className={presetButton}
                   onClick={() => {
-                    apply({});
+                    applyRange({});
                     setOpen(false);
                   }}
                 >
@@ -183,18 +189,18 @@ export function DateRangePicker({ from, to, onChange }: Props) {
               <div>
                 <DayPicker
                   mode="range"
-                  numberOfMonths={wide ? 2 : 1}
+                  numberOfMonths={isWideViewport ? 2 : 1}
                   defaultMonth={fromDate ?? today}
                   selected={
                     fromDate || toDateValue ? { from: fromDate, to: toDateValue } : undefined
                   }
-                  onSelect={onSelect}
+                  onSelect={handleDaySelect}
                   disabled={{ after: today }}
                   endMonth={today}
                   classNames={dayClassNames}
                 />
                 <p
-                  className={`mt-2 text-xs ${beyondNewsApi ? 'text-amber-700 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}
+                  className={`mt-2 text-xs ${isBeyondNewsApiWindow ? 'text-amber-700 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}
                 >
                   NewsAPI&apos;s free plan only covers about the last month; other sources are
                   unaffected.

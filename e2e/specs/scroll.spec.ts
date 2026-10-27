@@ -18,11 +18,11 @@ test.describe('infinite scroll', () => {
 
     const log = await upstream.log();
     expect(
-      log.filter((e) => e.status >= 400),
+      log.filter((entry) => entry.status >= 400),
       'no 4xx/5xx from exhausted sources',
     ).toEqual([]);
     expect(
-      log.every((e) => e.keyInjected),
+      log.every((entry) => entry.keyInjected),
       'nginx injects every key',
     ).toBe(true);
   });
@@ -33,7 +33,7 @@ test.describe('infinite scroll', () => {
     await scrollToEnd(page);
 
     const log = await upstream.log();
-    const pagesOf = (source: string) => log.filter((e) => e.source === source).length;
+    const pagesOf = (source: string) => log.filter((entry) => entry.source === source).length;
     // NewsAPI developer plan: 100 results = 5 pages of 20, never a 6th request.
     expect(pagesOf('newsapi')).toBeLessThanOrEqual(5);
     // NYT: 120 docs at 10 per page = 12 pages.
@@ -55,13 +55,13 @@ test.describe('responsive grid', () => {
       await expect(cards(page).first()).toBeVisible();
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await expect(async () => {
-        const n = await cards(page).count();
-        expect(n).toBeGreaterThan(columns);
-        expect(n % columns).toBe(0);
+        const count = await cards(page).count();
+        expect(count).toBeGreaterThan(columns);
+        expect(count % columns).toBe(0);
       }).toPass();
 
-      const tops = await page.$$eval('article', (els) =>
-        els.map((e) => Math.round(e.getBoundingClientRect().left)),
+      const tops = await page.$$eval('article', (elements) =>
+        elements.map((element) => Math.round(element.getBoundingClientRect().left)),
       );
       expect(new Set(tops).size).toBe(columns);
     });

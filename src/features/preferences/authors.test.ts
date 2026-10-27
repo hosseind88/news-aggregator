@@ -19,10 +19,12 @@ describe('authors helpers', () => {
   });
 
   it('moves followed authors first and keeps the rest in order', () => {
-    const a = makeArticle({ id: 'a', authors: ['X Xu'] });
-    const b = makeArticle({ id: 'b', authors: ['Y Yu'] });
-    const c = makeArticle({ id: 'c', authors: ['Z Zu'] });
-    expect(prioritiseAuthors([a, b, c], ['Z Zu']).map((x) => x.id)).toEqual(['c', 'a', 'b']);
-    expect(prioritiseAuthors([a, b, c], [])).toEqual([a, b, c]);
+    const first = makeArticle({ id: 'a', authors: ['X Xu'] });
+    const second = makeArticle({ id: 'b', authors: ['Y Yu'] });
+    const third = makeArticle({ id: 'c', authors: ['Z Zu'] });
+    expect(
+      prioritiseAuthors([first, second, third], ['Z Zu']).map((article) => article.id),
+    ).toEqual(['c', 'a', 'b']);
+    expect(prioritiseAuthors([first, second, third], [])).toEqual([first, second, third]);
   });
 });

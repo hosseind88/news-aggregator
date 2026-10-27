@@ -89,7 +89,7 @@ export interface SearchOptions {
 }
 
 export interface NewsService {
-  readonly providers: readonly Pick<NewsProvider, 'id' | 'name'>[];
+  readonly providerSummaries: readonly Pick<NewsProvider, 'id' | 'name'>[];
   search(
     params: SearchParams & { sources?: SourceId[] },
     options?: SearchOptions,

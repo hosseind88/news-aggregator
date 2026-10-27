@@ -21,8 +21,8 @@ const pagedSource = (
       publishedAt: new Date(start - i * step * 60_000).toISOString(),
     }),
   );
-  const search = vi.fn(async ({ page: n }: ProviderRequest) =>
-    page(all.slice((n - 1) * size, n * size), n * size < count),
+  const search = vi.fn(async ({ page: pageNumber }: ProviderRequest) =>
+    page(all.slice((pageNumber - 1) * size, pageNumber * size), pageNumber * size < count),
   );
   return { all, search, provider: makeProvider({ id, search }) };
 };
@@ -75,7 +75,7 @@ describe('NewsAggregator', () => {
 
     const { articles, failures, nextCursor } = await aggregator.search({});
 
-    expect(articles.map((a) => a.title)).toEqual(['New', 'Mid', 'Old']);
+    expect(articles.map((article) => article.title)).toEqual(['New', 'Mid', 'Old']);
     expect(failures).toEqual([]);
     expect(nextCursor).toBeUndefined();
   });
@@ -103,7 +103,7 @@ describe('NewsAggregator', () => {
 
     const { articles } = await aggregator.search({});
 
-    expect(articles.map((a) => a.id).sort()).toEqual(['1', '2', '5']);
+    expect(articles.map((article) => article.id).sort()).toEqual(['1', '2', '5']);
   });
 
   it('breaks timestamp ties by id so the order is deterministic', async () => {
@@ -119,7 +119,7 @@ describe('NewsAggregator', () => {
       }),
     ]);
     const { articles } = await aggregator.search({});
-    expect(articles.map((a) => a.id)).toEqual(['a', 'b']);
+    expect(articles.map((article) => article.id)).toEqual(['a', 'b']);
   });
 
   it('reports a failing provider without breaking the others', async () => {
@@ -134,7 +134,7 @@ describe('NewsAggregator', () => {
 
     const { articles, failures } = await aggregator.search({});
 
-    expect(articles.map((a) => a.id)).toEqual(['ok']);
+    expect(articles.map((article) => article.id)).toEqual(['ok']);
     expect(failures).toEqual([{ source: 'newsapi', sourceName: 'NewsAPI', message: 'boom' }]);
   });
 
@@ -150,7 +150,7 @@ describe('NewsAggregator', () => {
     const error = await aggregator.search({}).catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(AllSourcesFailedError);
-    expect((error as AllSourcesFailedError).failures.map((f) => f.message)).toEqual([
+    expect((error as AllSourcesFailedError).failures.map((failure) => failure.message)).toEqual([
       'Something went wrong. Please try again.',
       'down',
     ]);
@@ -168,7 +168,7 @@ describe('NewsAggregator', () => {
 
     const { failures } = await aggregator.search({});
 
-    expect(failures.map((f) => f.message)).toEqual([
+    expect(failures.map((failure) => failure.message)).toEqual([
       'The source returned data in an unexpected format',
     ]);
   });
@@ -229,7 +229,7 @@ describe('NewsAggregator', () => {
     ]);
 
     const { articles } = await aggregator.search({ from: '2024-05-01', to: '2024-05-03' });
-    expect(articles.map((a) => a.title)).toEqual(['In']);
+    expect(articles.map((article) => article.title)).toEqual(['In']);
   });
 
   describe('pagination', () => {
@@ -240,35 +240,41 @@ describe('NewsAggregator', () => {
     });
 
     it('yields one globally ordered, duplicate-free feed across pages', async () => {
-      const s = sources();
-      const aggregator = new NewsAggregator(Object.values(s).map((x) => x.provider));
+      const fakeSources = sources();
+      const aggregator = new NewsAggregator(
+        Object.values(fakeSources).map((source) => source.provider),
+      );
 
       const pages = await drain(aggregator);
       const flat = pages.flat();
 
       expect(flat).toHaveLength(40 + 90 + 25);
-      expect(new Set(flat.map((a) => a.id)).size).toBe(flat.length);
+      expect(new Set(flat.map((article) => article.id)).size).toBe(flat.length);
       const times = flat.map((a) => Date.parse(a.publishedAt));
       expect(times).toEqual([...times].sort((a, b) => b - a));
-      pages.slice(0, -1).forEach((p) => expect(p).toHaveLength(ARTICLES_PER_PAGE));
+      pages
+        .slice(0, -1)
+        .forEach((pageArticles) => expect(pageArticles).toHaveLength(ARTICLES_PER_PAGE));
     });
 
     it('never calls a source again once it reports hasMore: false', async () => {
-      const s = sources();
-      const aggregator = new NewsAggregator(Object.values(s).map((x) => x.provider));
+      const fakeSources = sources();
+      const aggregator = new NewsAggregator(
+        Object.values(fakeSources).map((source) => source.provider),
+      );
 
       await drain(aggregator);
 
-      expect(s.nyt.search).toHaveBeenCalledTimes(3); // 25 articles, 10 per page
-      expect(s.newsapi.search).toHaveBeenCalledTimes(4);
-      expect(s.guardian.search).toHaveBeenCalledTimes(9);
+      expect(fakeSources.nyt.search).toHaveBeenCalledTimes(3); // 25 articles, 10 per page
+      expect(fakeSources.newsapi.search).toHaveBeenCalledTimes(4);
+      expect(fakeSources.guardian.search).toHaveBeenCalledTimes(9);
     });
 
     it('treats a source hitting its plan cap (SourceExhaustedError) as finished, not failed', async () => {
       const capped = pagedSource('newsapi', { count: 20, step: 5 });
-      capped.search.mockImplementation(async ({ page: n }) => {
-        if (n > 2) throw new SourceExhaustedError();
-        return page(capped.all.slice((n - 1) * 10, n * 10), true);
+      capped.search.mockImplementation(async ({ page: pageNumber }) => {
+        if (pageNumber > 2) throw new SourceExhaustedError();
+        return page(capped.all.slice((pageNumber - 1) * 10, pageNumber * 10), true);
       });
       const other = pagedSource('guardian', { count: 60, step: 30 });
       const aggregator = new NewsAggregator([capped.provider, other.provider]);
@@ -281,15 +287,15 @@ describe('NewsAggregator', () => {
         cursor = result.nextCursor;
       } while (cursor);
 
-      expect(results.flatMap((r) => r.failures)).toEqual([]);
-      expect(results.flatMap((r) => r.articles)).toHaveLength(80);
+      expect(results.flatMap((result) => result.failures)).toEqual([]);
+      expect(results.flatMap((result) => result.articles)).toHaveLength(80);
       expect(capped.search).toHaveBeenCalledTimes(3);
     });
 
     it('keeps serving the rest when a source fails mid-scroll, then reports it instead of ending', async () => {
       const flaky = pagedSource('newsapi', { count: 60, step: 10 });
-      flaky.search.mockImplementation(async ({ page: n }) => {
-        if (n >= 2) throw new HttpError(429, 'rate limited');
+      flaky.search.mockImplementation(async ({ page: pageNumber }) => {
+        if (pageNumber >= 2) throw new HttpError(429, 'rate limited');
         return page(flaky.all.slice(0, 10), true);
       });
       const steady = pagedSource('guardian', { count: 50, step: 10 });
@@ -308,9 +314,11 @@ describe('NewsAggregator', () => {
         error = e;
       }
 
-      expect(results.flatMap((r) => r.failures)).toHaveLength(1);
+      expect(results.flatMap((result) => result.failures)).toHaveLength(1);
       expect(
-        results.flatMap((r) => r.articles).filter((a) => a.source === 'guardian'),
+        results
+          .flatMap((result) => result.articles)
+          .filter((article) => article.source === 'guardian'),
       ).toHaveLength(50);
       // The failed source is not hammered while others serve; once they are done it is retried
       // and, still failing, the feed reports an error instead of claiming it is complete.
@@ -319,17 +327,17 @@ describe('NewsAggregator', () => {
     });
 
     it('throws when every source fails on a later page, leaving the cursor reusable', async () => {
-      const a = pagedSource('newsapi', { count: 100, step: 10 });
-      const b = pagedSource('guardian', { count: 100, step: 10 });
-      const aggregator = new NewsAggregator([a.provider, b.provider]);
+      const firstSource = pagedSource('newsapi', { count: 100, step: 10 });
+      const secondSource = pagedSource('guardian', { count: 100, step: 10 });
+      const aggregator = new NewsAggregator([firstSource.provider, secondSource.provider]);
       const serve =
-        (s: typeof a) =>
-        async ({ page: n }: ProviderRequest) =>
-          page(s.all.slice((n - 1) * 10, n * 10), n * 10 < 100);
+        (source: typeof firstSource) =>
+        async ({ page: pageNumber }: ProviderRequest) =>
+          page(source.all.slice((pageNumber - 1) * 10, pageNumber * 10), pageNumber * 10 < 100);
 
       const first = await aggregator.search({});
-      a.search.mockRejectedValue(new HttpError(503, 'down'));
-      b.search.mockRejectedValue(new HttpError(503, 'down'));
+      firstSource.search.mockRejectedValue(new HttpError(503, 'down'));
+      secondSource.search.mockRejectedValue(new HttpError(503, 'down'));
 
       let cursor = first.nextCursor;
       let snapshot = JSON.stringify(cursor);
@@ -346,15 +354,17 @@ describe('NewsAggregator', () => {
       expect(error).toBeInstanceOf(AllSourcesFailedError);
       expect(JSON.stringify(cursor)).toBe(snapshot); // the failed call left the cursor untouched
 
-      a.search.mockImplementation(serve(a));
-      b.search.mockImplementation(serve(b));
+      firstSource.search.mockImplementation(serve(firstSource));
+      secondSource.search.mockImplementation(serve(secondSource));
       const retried = await aggregator.search({}, { cursor });
       expect(retried.articles).toHaveLength(ARTICLES_PER_PAGE);
     });
 
     it('survives a JSON round-trip of the cursor', async () => {
-      const s = sources();
-      const aggregator = new NewsAggregator(Object.values(s).map((x) => x.provider));
+      const fakeSources = sources();
+      const aggregator = new NewsAggregator(
+        Object.values(fakeSources).map((source) => source.provider),
+      );
       const first = await aggregator.search({});
       const revived = JSON.parse(JSON.stringify(first.nextCursor));
 
@@ -379,20 +389,25 @@ describe('NewsAggregator', () => {
 
     it('passes the signal through to providers', async () => {
       const { signal } = new AbortController();
-      const s = pagedSource('nyt', { count: 3, step: 1 });
-      await new NewsAggregator([s.provider]).search({}, { signal });
-      expect(s.search).toHaveBeenCalledWith(expect.objectContaining({ signal }));
+      const source = pagedSource('nyt', { count: 3, step: 1 });
+      await new NewsAggregator([source.provider]).search({}, { signal });
+      expect(source.search).toHaveBeenCalledWith(expect.objectContaining({ signal }));
     });
   });
 
   describe('author filter', () => {
     const byline = (articles: Article[], authors: string[]) =>
-      articles.map((a, i) => ({ ...a, authors: i % 4 === 0 ? authors : ['Someone Else'] }));
+      articles.map((article, i) => ({
+        ...article,
+        authors: i % 4 === 0 ? authors : ['Someone Else'],
+      }));
 
     it('forwards the authors to every provider', async () => {
-      const s = pagedSource('guardian', { count: 5, step: 1 });
-      await new NewsAggregator([s.provider]).search({ authors: ['Jane Doe'] });
-      expect(s.search).toHaveBeenCalledWith(expect.objectContaining({ authors: ['Jane Doe'] }));
+      const source = pagedSource('guardian', { count: 5, step: 1 });
+      await new NewsAggregator([source.provider]).search({ authors: ['Jane Doe'] });
+      expect(source.search).toHaveBeenCalledWith(
+        expect.objectContaining({ authors: ['Jane Doe'] }),
+      );
     });
 
     it('keeps only articles by the followed authors, ignoring case', async () => {
@@ -406,21 +421,21 @@ describe('NewsAggregator', () => {
         authors: ['jose  NUNEZ'],
       });
       expect(articles).toHaveLength(5);
-      expect(articles.every((a) => a.authors.includes('Jose Nunez'))).toBe(true);
+      expect(articles.every((article) => article.authors.includes('Jose Nunez'))).toBe(true);
     });
 
     it('scans a source that cannot filter by author at most one page per call', async () => {
-      const s = pagedSource('newsapi', { count: 500, step: 1, size: 20 });
-      const aggregator = new NewsAggregator([s.provider]);
+      const source = pagedSource('newsapi', { count: 500, step: 1, size: 20 });
+      const aggregator = new NewsAggregator([source.provider]);
 
       const first = await aggregator.search({ authors: ['Nobody'] });
       expect(first.articles).toEqual([]);
-      expect(s.search).toHaveBeenCalledTimes(1);
+      expect(source.search).toHaveBeenCalledTimes(1);
       expect(first.nextCursor).toBeDefined();
 
       // The next explicit call continues one page further, not from scratch.
       await aggregator.search({ authors: ['Nobody'] }, { cursor: first.nextCursor });
-      expect(s.search.mock.calls.map(([r]) => r.page)).toEqual([1, 2]);
+      expect(source.search.mock.calls.map(([request]) => request.page)).toEqual([1, 2]);
     });
 
     it('bounds the rounds spent on a source that can filter but has no matches to give', async () => {

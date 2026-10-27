@@ -6,7 +6,7 @@ import { endOfLocalDay, startOfLocalDay } from '@/services/normalize';
  * Validates an array of raw items one by one so a single malformed record
  * is dropped instead of failing the whole source.
  */
-export const parseItems = <T extends z.ZodTypeAny>(schema: T, raw: unknown): z.infer<T>[] => {
+export const parseValidItems = <T extends z.ZodTypeAny>(schema: T, raw: unknown): z.infer<T>[] => {
   const items = Array.isArray(raw) ? raw : [];
   return items.flatMap((item) => {
     const result = schema.safeParse(item);
@@ -24,7 +24,7 @@ const MAX_AUTHORS_PUSHED = 10;
  * Full-text query that narrows a search to bylines (`"A" OR "B"`), optionally ANDed with the
  * user's keyword. Undefined when there is nothing to filter on.
  */
-export const authorQuery = (authors: readonly string[] = [], keyword?: string) => {
+export const buildAuthorQuery = (authors: readonly string[] = [], keyword?: string) => {
   const names = authors
     .slice(0, MAX_AUTHORS_PUSHED)
     .map((name) => name.replace(/["()]/g, ' ').trim())
@@ -36,7 +36,7 @@ export const authorQuery = (authors: readonly string[] = [], keyword?: string) =
 };
 
 /** Local calendar day -> instant (ISO-8601 UTC) for APIs that accept timestamps. */
-export const dayStartInstant = (day?: string): string | undefined =>
+export const getDayStartInstant = (day?: string): string | undefined =>
   startOfLocalDay(day)?.toISOString();
-export const dayEndInstant = (day?: string): string | undefined =>
+export const getDayEndInstant = (day?: string): string | undefined =>
   endOfLocalDay(day)?.toISOString();

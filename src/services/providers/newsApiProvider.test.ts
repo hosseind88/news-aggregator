@@ -53,7 +53,7 @@ describe('NewsApiProvider', () => {
     const { articles } = await provider.search({ ...REQ, categories: ['business', 'health'] });
 
     expect(getJson).toHaveBeenCalledTimes(2);
-    expect(articles.map((a) => a.category)).toContain('health');
+    expect(articles.map((article) => article.category)).toContain('health');
   });
 
   it('switches to the everything endpoint when a date range is given', async () => {

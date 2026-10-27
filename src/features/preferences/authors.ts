@@ -17,7 +17,7 @@ export const isByAuthor = (article: Article, followed: string[]): boolean =>
 /** Stable partition: followed authors first, original order preserved otherwise. */
 export const prioritiseAuthors = (articles: Article[], followed: string[]): Article[] => {
   if (followed.length === 0) return articles;
-  const mine = articles.filter((a) => isByAuthor(a, followed));
-  const rest = articles.filter((a) => !isByAuthor(a, followed));
-  return [...mine, ...rest];
+  const followedArticles = articles.filter((article) => isByAuthor(article, followed));
+  const otherArticles = articles.filter((article) => !isByAuthor(article, followed));
+  return [...followedArticles, ...otherArticles];
 };

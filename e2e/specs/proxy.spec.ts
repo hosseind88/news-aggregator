@@ -26,8 +26,8 @@ test.describe('nginx security headers', () => {
     request,
   }) => {
     let asset = '';
-    page.on('response', (r) => {
-      if (!asset && new URL(r.url()).pathname.startsWith('/assets/')) asset = r.url();
+    page.on('response', (response) => {
+      if (!asset && new URL(response.url()).pathname.startsWith('/assets/')) asset = response.url();
     });
     await page.goto('/');
     expect(asset).not.toBe('');
@@ -37,9 +37,9 @@ test.describe('nginx security headers', () => {
       expect(res.headers()[name], name).toMatch(re);
     }
     expect(res.headers()['cache-control']).toBe('public, max-age=31536000, immutable');
-    expect(res.headersArray().filter((h) => h.name.toLowerCase() === 'cache-control')).toHaveLength(
-      1,
-    );
+    expect(
+      res.headersArray().filter((header) => header.name.toLowerCase() === 'cache-control'),
+    ).toHaveLength(1);
     expect(res.headers()['expires']).toBeUndefined();
   });
 
@@ -83,9 +83,9 @@ test.describe('API proxy', () => {
     expect(first.headers.get('x-cache-status')).toBe('MISS');
     const second = await fetch(url);
     expect(second.headers.get('x-cache-status')).toBe('HIT');
-    expect((await upstream.log()).filter((e) => e.query['q']?.startsWith('cache-'))).toHaveLength(
-      1,
-    );
+    expect(
+      (await upstream.log()).filter((entry) => entry.query['q']?.startsWith('cache-')),
+    ).toHaveLength(1);
   });
 
   // Last on purpose: it exhausts the edge instance's per-IP bucket.
@@ -97,10 +97,12 @@ test.describe('API proxy', () => {
         fetch(`${EDGE}/api/guardian/search?page=1&page-size=5&q=burst-${i}`),
       ),
     );
-    const statuses = burst.map((r) => r.status);
+    const statuses = burst.map((response) => response.status);
     expect(statuses).toContain(429);
-    expect(statuses.filter((s) => s === 200).length).toBeLessThan(20);
-    const reached = (await upstream.log()).filter((e) => e.query['q']?.startsWith('burst-'));
-    expect(reached.length).toBe(statuses.filter((s) => s === 200).length);
+    expect(statuses.filter((status) => status === 200).length).toBeLessThan(20);
+    const reached = (await upstream.log()).filter((entry) =>
+      entry.query['q']?.startsWith('burst-'),
+    );
+    expect(reached.length).toBe(statuses.filter((status) => status === 200).length);
   });
 });

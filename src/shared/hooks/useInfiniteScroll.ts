@@ -33,10 +33,10 @@ export function useInfiniteScroll({
     onLoadMoreRef.current = onLoadMore;
   });
 
-  const active = hasNextPage && !isFetching && !disabled;
+  const canLoadMore = hasNextPage && !isFetching && !disabled;
 
   useEffect(() => {
-    if (!sentinel || !active || typeof IntersectionObserver === 'undefined') return;
+    if (!sentinel || !canLoadMore || typeof IntersectionObserver === 'undefined') return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) onLoadMoreRef.current();
@@ -45,7 +45,7 @@ export function useInfiniteScroll({
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [sentinel, active, revision]);
+  }, [sentinel, canLoadMore, revision]);
 
   return setSentinel;
 }

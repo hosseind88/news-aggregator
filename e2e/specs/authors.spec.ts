@@ -104,7 +104,7 @@ test.describe('only followed authors', () => {
     await expect(page.getByRole('heading', { name: /Archive 60/ })).toBeVisible();
     await expect(page.getByText(EMPTY)).toHaveCount(0);
 
-    const guardian = (await mock.log()).filter((e) => e.source === 'guardian');
+    const guardian = (await mock.log()).filter((entry) => entry.source === 'guardian');
     expect(guardian[0]?.query['query-fields']).toContain('byline');
     expect(guardian[0]?.query.q).toContain('"Jane Doe"');
     expect(guardian.length, 'one pushed-down request, not a page-by-page scan').toBeLessThanOrEqual(
@@ -120,7 +120,9 @@ test.describe('only followed authors', () => {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     expect(await requestsDuring(3000)).toBe(0);
 
-    const keys = (await mock.log()).map((e) => `${e.source}|${JSON.stringify(e.query)}`);
+    const keys = (await mock.log()).map(
+      (entry) => `${entry.source}|${JSON.stringify(entry.query)}`,
+    );
     expect(new Set(keys).size, 'every upstream request is distinct').toBe(keys.length);
   });
 });

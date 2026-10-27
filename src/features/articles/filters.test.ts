@@ -19,10 +19,10 @@ describe('normalizeFilters', () => {
   });
 
   it('de-duplicates and orders list filters so equivalent filters share a cache key', () => {
-    const a = normalizeFilters({ categories: ['health', 'business', 'business'] });
-    const b = normalizeFilters({ categories: ['business', 'health'] });
-    expect(a).toEqual(b);
-    expect(a.categories).toEqual(['business', 'health']);
+    const unsorted = normalizeFilters({ categories: ['health', 'business', 'business'] });
+    const sorted = normalizeFilters({ categories: ['business', 'health'] });
+    expect(unsorted).toEqual(sorted);
+    expect(unsorted.categories).toEqual(['business', 'health']);
   });
 
   it('treats an empty list and "every source" as no filter', () => {

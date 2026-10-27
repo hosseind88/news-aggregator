@@ -18,18 +18,18 @@ export function PreferencesPage() {
   const { sources, categories, authors, hasPreferences } = usePreferences();
   const { setSources, setCategories, addAuthor, removeAuthor, reset } =
     usePreferencesStore.getState();
-  const [draft, setDraft] = useState('');
+  const [authorDraft, setAuthorDraft] = useState('');
 
   // Suggestions come from the latest articles (shares the cache with the home feed).
-  const latest = useArticles({});
-  const suggestions = collectAuthors(latest.articles).filter(
-    (name) => !authors.some((a) => authorKey(a) === authorKey(name)),
+  const latestArticlesQuery = useArticles({});
+  const suggestions = collectAuthors(latestArticlesQuery.articles).filter(
+    (name) => !authors.some((followedAuthor) => authorKey(followedAuthor) === authorKey(name)),
   );
 
-  const submitAuthor = (event: FormEvent) => {
+  const followDraftAuthor = (event: FormEvent) => {
     event.preventDefault();
-    addAuthor(draft);
-    setDraft('');
+    addAuthor(authorDraft);
+    setAuthorDraft('');
   };
 
   return (
@@ -70,16 +70,16 @@ export function PreferencesPage() {
         <h2 id="authors-heading" className="text-sm font-semibold">
           Followed authors
         </h2>
-        <form onSubmit={submitAuthor} className="flex items-end gap-2">
+        <form onSubmit={followDraftAuthor} className="flex items-end gap-2">
           <div className="flex-1">
             <TextInput
               label="Add an author"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              value={authorDraft}
+              onChange={(e) => setAuthorDraft(e.target.value)}
               placeholder="e.g. Jane Doe"
             />
           </div>
-          <Button type="submit" disabled={!draft.trim()}>
+          <Button type="submit" disabled={!authorDraft.trim()}>
             Add
           </Button>
         </form>

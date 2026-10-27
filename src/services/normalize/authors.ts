@@ -13,8 +13,8 @@ const NOT_A_PERSON = new Set([
 ]);
 
 const GENERIC_ROLE = /(^|\s)(staff|agencies|agency|editorial|editors?|desk|newsroom|team)(\s|$)/i;
-const key = (name: string) => collapse(name).toLowerCase();
-const collapse = (value: string) => value.replace(/\s+/g, ' ').trim();
+const toAuthorKey = (name: string) => collapseWhitespace(name).toLowerCase();
+const collapseWhitespace = (value: string) => value.replace(/\s+/g, ' ').trim();
 
 /** "JANE DOE" / "jane doe" -> "Jane Doe"; words with intentional inner caps ("McDonald") are kept. */
 const toTitleCase = (name: string): string =>
@@ -28,7 +28,7 @@ const toTitleCase = (name: string): string =>
     .join(' ');
 
 const cleanPerson = (part: string): string | undefined => {
-  const name = collapse(
+  const name = collapseWhitespace(
     part
       .replace(/\([^)]*\)/g, ' ') // "(Reuters)"
       .replace(/^(written\s+)?by[:\s]+/i, '')
@@ -46,7 +46,10 @@ export const normalizeAuthors = (
   raw: string | readonly string[] | null | undefined,
   extraBlocklist: readonly (string | null | undefined)[] = [],
 ): string[] => {
-  const blocked = new Set([...NOT_A_PERSON, ...extraBlocklist.filter(Boolean).map((n) => key(n!))]);
+  const blocked = new Set([
+    ...NOT_A_PERSON,
+    ...extraBlocklist.filter(Boolean).map((blockedName) => toAuthorKey(blockedName!)),
+  ]);
   const parts = (Array.isArray(raw) ? raw : [raw])
     .map((value) => cleanText(value as string | null | undefined))
     .flatMap((text) => (text ? text.split(/\s*(?:,|;|\||&|\band\b)\s*/i) : []));
@@ -54,18 +57,18 @@ export const normalizeAuthors = (
   const seen = new Map<string, string>();
   for (const part of parts) {
     const person = cleanPerson(part);
-    if (!person || blocked.has(key(person))) continue;
+    if (!person || blocked.has(toAuthorKey(person))) continue;
     const name = toTitleCase(person);
-    seen.set(key(name), seen.get(key(name)) ?? name);
+    seen.set(toAuthorKey(name), seen.get(toAuthorKey(name)) ?? name);
   }
   return [...seen.values()];
 };
 
 export const normalizeAuthorName = (raw: string): string | undefined => normalizeAuthors(raw)[0];
 
-export const authorKey = key;
+export const authorKey = toAuthorKey;
 
 export const hasAnyAuthor = (articleAuthors: readonly string[], followed: readonly string[]) => {
-  const keys = new Set(followed.map(key));
-  return articleAuthors.some((name) => keys.has(key(name)));
+  const followedKeys = new Set(followed.map(toAuthorKey));
+  return articleAuthors.some((name) => followedKeys.has(toAuthorKey(name)));
 };

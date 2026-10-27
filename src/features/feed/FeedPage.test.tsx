@@ -22,7 +22,7 @@ const setup = () => {
   });
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <NewsServiceProvider service={{ providers: [], search }}>
+      <NewsServiceProvider service={{ providerSummaries: [], search }}>
         <TestRouter>
           <FeedPage />
         </TestRouter>
@@ -62,7 +62,9 @@ describe('FeedPage', () => {
       expect.objectContaining({ sources: ['nyt'], categories: ['science'] }),
       expect.anything(),
     );
-    const titles = (await screen.findAllByRole('heading', { level: 3 })).map((h) => h.textContent);
+    const titles = (await screen.findAllByRole('heading', { level: 3 })).map(
+      (heading) => heading.textContent,
+    );
     expect(titles[0]).toMatch(/Followed story/);
     expect(screen.getByText('Followed author')).toBeInTheDocument();
   });

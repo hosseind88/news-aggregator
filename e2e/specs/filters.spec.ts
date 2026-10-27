@@ -16,7 +16,7 @@ test.describe('date filter uses local days', () => {
     const [from] = new URL(page.url()).searchParams.getAll('from');
     await expect(async () => {
       const guardian = (await upstream.log()).filter(
-        (e) => e.source === 'guardian' && e.query['from-date'],
+        (entry) => entry.source === 'guardian' && entry.query['from-date'],
       );
       expect(guardian.length).toBeGreaterThan(0);
       // Local midnight in Auckland is not a UTC midnight: the request carries the exact instant.
@@ -25,8 +25,8 @@ test.describe('date filter uses local days', () => {
       expect(new Date(sent).getTime()).toBe(new Date(`${from}T00:00:00+13:00`).getTime());
     }).toPass();
 
-    const published = await page.$$eval('article time', (els) =>
-      els.map((e) => e.getAttribute('datetime') ?? ''),
+    const published = await page.$$eval('article time', (elements) =>
+      elements.map((element) => element.getAttribute('datetime') ?? ''),
     );
     const today = await page.evaluate(() => new Date().toLocaleDateString('en-CA'));
     for (const iso of published) {
@@ -45,8 +45,8 @@ test.describe('untrusted input', () => {
 
     const log = await upstream.log();
     expect(log.length).toBeGreaterThan(0);
-    for (const e of log) {
-      expect(JSON.stringify(e.query)).not.toMatch(/2024-13|not-a-date|20241345/);
+    for (const entry of log) {
+      expect(JSON.stringify(entry.query)).not.toMatch(/2024-13|not-a-date|20241345/);
     }
   });
 
@@ -77,8 +77,8 @@ test.describe('untrusted input', () => {
 test.describe('app shell', () => {
   test('routes are code-split and titled', async ({ page }) => {
     const scripts = new Set<string>();
-    page.on('response', (r) => {
-      if (r.url().endsWith('.js')) scripts.add(new URL(r.url()).pathname);
+    page.on('response', (response) => {
+      if (response.url().endsWith('.js')) scripts.add(new URL(response.url()).pathname);
     });
     await page.goto('/');
     await expect(cards(page).first()).toBeVisible();
@@ -99,8 +99,8 @@ test.describe('app shell', () => {
 
   test('the CSP is not violated by the running app', async ({ page }) => {
     const violations: string[] = [];
-    page.on('console', (m) => {
-      if (/content security policy/i.test(m.text())) violations.push(m.text());
+    page.on('console', (message) => {
+      if (/content security policy/i.test(message.text())) violations.push(message.text());
     });
     await page.goto('/');
     await expect(cards(page).first()).toBeVisible();

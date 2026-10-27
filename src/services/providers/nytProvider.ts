@@ -3,7 +3,7 @@ import type { Article, Category, NewsProvider, ProviderRequest, SourcePage } fro
 import { endOfLocalDay, startOfLocalDay, toUtcDayStamp } from '@/services/normalize';
 import type { HttpClient } from '@/services/http/httpClient';
 import { createArticle } from '@/services/normalize';
-import { authorQuery, parseItems, supportedCategoriesOf } from './shared';
+import { buildAuthorQuery, parseValidItems, supportedCategoriesOf } from './shared';
 
 const PAGE_SIZE = 10;
 /** NYT serves at most 100 pages (1000 results) per query. */
@@ -23,7 +23,7 @@ const SECTION_MAP: Record<Category, string> = {
   entertainment: 'Arts',
 };
 
-const docSchema = z.object({
+const rawDocSchema = z.object({
   _id: z.string(),
   web_url: z.string().url(),
   headline: z.object({ main: z.string().min(1) }),
@@ -40,7 +40,7 @@ const docSchema = z.object({
     ])
     .nullish(),
 });
-type RawDoc = z.infer<typeof docSchema>;
+type RawNytDoc = z.infer<typeof rawDocSchema>;
 
 const responseSchema = z.object({
   // NYT returns `docs: null` (not []) when a query has no hits.
@@ -55,10 +55,10 @@ const responseSchema = z.object({
   }),
 });
 
-const pickImagePath = (multimedia: RawDoc['multimedia']): string | undefined => {
+const pickImagePath = (multimedia: RawNytDoc['multimedia']): string | undefined => {
   if (!multimedia) return undefined;
   return Array.isArray(multimedia)
-    ? (multimedia.find((m) => m.subtype === 'thumbnail') ?? multimedia[0])?.url
+    ? (multimedia.find((media) => media.subtype === 'thumbnail') ?? multimedia[0])?.url
     : multimedia.default?.url;
 };
 
@@ -66,10 +66,10 @@ const pickImagePath = (multimedia: RawDoc['multimedia']): string | undefined => 
  * NYT only filters on whole UTC days (`YYYYMMDD`). Widen the user's local-day range to the UTC
  * days it touches; the aggregator trims the edges using exact timestamps.
  */
-const utcDayStamp = (instant: Date | undefined): string | undefined =>
+const formatUtcDayStamp = (instant: Date | undefined): string | undefined =>
   instant && toUtcDayStamp(instant);
 
-const mapNytDoc = (raw: RawDoc): Article | undefined =>
+const mapNytDoc = (raw: RawNytDoc): Article | undefined =>
   createArticle({
     source: 'nyt',
     title: raw.headline.main,
@@ -104,9 +104,9 @@ export class NytProvider implements NewsProvider {
       '/api/nyt/articlesearch.json',
       {
         // Phrase search on the name: it is what the live API honours (byline `fq` returns nothing).
-        q: authorQuery(authors, keyword),
-        begin_date: utcDayStamp(startOfLocalDay(from)),
-        end_date: utcDayStamp(endOfLocalDay(to)),
+        q: buildAuthorQuery(authors, keyword),
+        begin_date: formatUtcDayStamp(startOfLocalDay(from)),
+        end_date: formatUtcDayStamp(endOfLocalDay(to)),
         fq: sections ? `section_name:(${sections})` : undefined,
         sort: 'newest',
         page: page - 1, // NYT pages are 0-based
@@ -116,7 +116,9 @@ export class NytProvider implements NewsProvider {
     const { response } = responseSchema.parse(payload);
     const reachable = Math.min((response.meta ?? response.metadata)?.hits ?? Infinity, RESULT_CAP);
     return {
-      articles: parseItems(docSchema, response.docs).flatMap((item) => mapNytDoc(item) ?? []),
+      articles: parseValidItems(rawDocSchema, response.docs).flatMap(
+        (item) => mapNytDoc(item) ?? [],
+      ),
       hasMore: response.docs.length > 0 && page * PAGE_SIZE < reachable,
     };
   }

@@ -3,7 +3,12 @@ import type { Article, Category, NewsProvider, ProviderRequest, SourcePage } fro
 import { HttpError, SourceExhaustedError } from '@/services/errors';
 import type { HttpClient } from '@/services/http/httpClient';
 import { createArticle } from '@/services/normalize';
-import { dayEndInstant, dayStartInstant, parseItems, supportedCategoriesOf } from './shared';
+import {
+  getDayEndInstant,
+  getDayStartInstant,
+  parseValidItems,
+  supportedCategoriesOf,
+} from './shared';
 
 const PAGE_SIZE = 20;
 /** The free plan serves at most 100 results per query; deeper pages answer HTTP 426. */
@@ -71,9 +76,9 @@ export class NewsApiProvider implements NewsProvider {
     page,
     signal,
   }: ProviderRequest): Promise<SourcePage> {
-    const base = { pageSize: PAGE_SIZE, page };
+    const baseParams = { pageSize: PAGE_SIZE, page };
     // The plan's cap is not an outage: once it is hit this source is simply finished.
-    const get = async (path: string, params: Record<string, string | number | undefined>) => {
+    const fetchJson = async (path: string, params: Record<string, string | number | undefined>) => {
       try {
         return await this.http.getJson(path, params, { signal });
       } catch (error) {
@@ -84,26 +89,26 @@ export class NewsApiProvider implements NewsProvider {
 
     if (from || to) {
       const terms = [keyword, ...categories].filter(Boolean);
-      const q = terms.length ? terms.join(' ') : 'news';
-      const payload = await get('/api/newsapi/everything', {
-        ...base,
-        q,
-        from: dayStartInstant(from),
-        to: dayEndInstant(to),
+      const query = terms.length ? terms.join(' ') : 'news';
+      const payload = await fetchJson('/api/newsapi/everything', {
+        ...baseParams,
+        q: query,
+        from: getDayStartInstant(from),
+        to: getDayEndInstant(to),
         sortBy: 'publishedAt',
         language: 'en',
       });
-      return this.map(payload, undefined, page);
+      return this.parseSourcePage(payload, undefined, page);
     }
 
     const requests = (categories.length ? categories : [undefined]).map(async (category) => {
-      const payload = await get('/api/newsapi/top-headlines', {
-        ...base,
+      const payload = await fetchJson('/api/newsapi/top-headlines', {
+        ...baseParams,
         q: keyword,
         country: 'us',
         category: category && CATEGORY_MAP[category],
       });
-      return this.map(payload, category, page);
+      return this.parseSourcePage(payload, category, page);
     });
     const pages = await Promise.all(requests);
     return {
@@ -112,11 +117,11 @@ export class NewsApiProvider implements NewsProvider {
     };
   }
 
-  private map(payload: unknown, category?: Category, page = 1): SourcePage {
+  private parseSourcePage(payload: unknown, category?: Category, page = 1): SourcePage {
     const { articles, totalResults } = responseSchema.parse(payload);
     const reachable = Math.min(totalResults ?? Infinity, RESULT_CAP);
     return {
-      articles: parseItems(articleSchema, articles).flatMap(
+      articles: parseValidItems(articleSchema, articles).flatMap(
         (item) => mapNewsApiArticle(item, category) ?? [],
       ),
       hasMore: articles.length > 0 && page * PAGE_SIZE < reachable,

@@ -10,7 +10,7 @@ const CACHE_TTL_S = 60;
 const STALE_WHILE_REVALIDATE_S = 600;
 const UPSTREAM_TIMEOUT_MS = 12_000;
 
-interface Source {
+interface UpstreamSource {
   /** Only these endpoints are forwarded; anything else is a 404 (no open proxy). */
   endpoints: ReadonlySet<string>;
   upstream: string;
@@ -43,21 +43,22 @@ export const SOURCES = {
     keyEnv: 'NYT_KEY',
     keyIn: 'query',
   },
-} as const satisfies Record<string, Source>;
+} as const satisfies Record<string, UpstreamSource>;
 
 export type SourceName = keyof typeof SOURCES;
 
-const plain = (status: number, body: string, headers: Record<string, string> = {}) =>
+const createPlainResponse = (status: number, body: string, headers: Record<string, string> = {}) =>
   new Response(body, { status, headers: { 'Content-Type': 'text/plain', ...headers } });
 
 export async function proxy(name: SourceName, request: Request): Promise<Response> {
-  const source: Source = SOURCES[name];
-  if (request.method !== 'GET') return plain(405, 'Method Not Allowed', { Allow: 'GET' });
+  const source: UpstreamSource = SOURCES[name];
+  if (request.method !== 'GET')
+    return createPlainResponse(405, 'Method Not Allowed', { Allow: 'GET' });
 
   const url = new URL(request.url);
   const endpoint = url.pathname.replace(`/api/${name}/`, '');
   if (!url.pathname.startsWith(`/api/${name}/`) || !source.endpoints.has(endpoint)) {
-    return plain(404, 'Not Found');
+    return createPlainResponse(404, 'Not Found');
   }
 
   const target = new URL(source.basePath + endpoint, source.upstream);
@@ -68,23 +69,23 @@ export async function proxy(name: SourceName, request: Request): Promise<Respons
   else target.searchParams.set('api-key', key);
 
   try {
-    const upstream = await fetch(target, {
+    const upstreamResponse = await fetch(target, {
       headers,
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
     // Only successful answers are edge-cached, like `proxy_cache_valid 200`.
-    return new Response(await upstream.arrayBuffer(), {
-      status: upstream.status,
+    return new Response(await upstreamResponse.arrayBuffer(), {
+      status: upstreamResponse.status,
       headers: {
-        'Content-Type': upstream.headers.get('content-type') ?? 'application/json',
-        'Cache-Control': upstream.ok
+        'Content-Type': upstreamResponse.headers.get('content-type') ?? 'application/json',
+        'Cache-Control': upstreamResponse.ok
           ? `public, s-maxage=${CACHE_TTL_S}, stale-while-revalidate=${STALE_WHILE_REVALIDATE_S}`
           : 'no-store',
       },
     });
   } catch (err) {
     const timedOut = err instanceof Error && err.name === 'TimeoutError';
-    return plain(timedOut ? 504 : 502, timedOut ? 'Gateway Timeout' : 'Bad Gateway', {
+    return createPlainResponse(timedOut ? 504 : 502, timedOut ? 'Gateway Timeout' : 'Bad Gateway', {
       'Cache-Control': 'no-store',
     });
   }

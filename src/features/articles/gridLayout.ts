@@ -12,13 +12,13 @@ const GRID_STEPS: { minWidth: number; className: string }[] = [
   { minWidth: LG_MIN_WIDTH, className: 'lg:grid-cols-3' },
 ];
 
-export const GRID_CLASS = `grid gap-4 ${GRID_STEPS.map((s) => s.className).join(' ')}`;
+export const GRID_CLASS = `grid gap-4 ${GRID_STEPS.map((step) => step.className).join(' ')}`;
 
 export const SM_QUERY = `(min-width: ${SM_MIN_WIDTH}px)`;
 export const LG_QUERY = `(min-width: ${LG_MIN_WIDTH}px)`;
 
 /** Columns of `GRID_CLASS` (1 / 2 / 3) for the viewport matched by the two queries above. */
-export const columnsFor = (sm: boolean, lg: boolean) => (lg ? 3 : sm ? 2 : 1);
+export const getColumnCount = (isSmUp: boolean, isLgUp: boolean) => (isLgUp ? 3 : isSmUp ? 2 : 1);
 
 /**
  * Hides a trailing partial row while more pages exist; the remainder is shown
