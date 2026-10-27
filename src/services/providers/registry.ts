@@ -6,9 +6,10 @@ import { NewsApiProvider } from './newsApiProvider';
 import { NytProvider } from './nytProvider';
 
 /**
- * The only place that knows which concrete sources exist.
- * To add a source: write one adapter implementing `NewsProvider`, then add it here
- * (and its id to `SOURCE_IDS`). No other code changes.
+ * The only place that instantiates the concrete sources.
+ * To add a source: write one adapter implementing `NewsProvider`, add it here, add its id and
+ * label to `SOURCE_IDS` / `SOURCE_LABELS` in `domain/news.ts`, and add a proxy entry
+ * (nginx template and `vite.config.ts`).
  */
 export const createProviders = (): NewsProvider[] => {
   const http = createHttpClient();
