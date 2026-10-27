@@ -73,4 +73,4 @@ docker/nginx/    # proxy and security header config
 e2e/             # Playwright specs and mock upstream
 ```
 
-More: [Architecture](docs/ARCHITECTURE.md) | [Review notes and limitations](docs/REVIEW_NOTES.md)
+More: [Architecture](docs/ARCHITECTURE.md) | [Deploy to Vercel](docs/ARCHITECTURE.md#deploy-to-vercel) | [Review notes and limitations](docs/REVIEW_NOTES.md)

@@ -107,6 +107,18 @@ The same approach is used for all three sources for consistency. Hardening in `d
 
 Proof: [`evidence/after-headers.txt`](evidence/after-headers.txt).
 
+## Deploy to Vercel
+
+Docker/nginx stays the primary way to run the app. Vercel is an alternative that serves the same `/api/<source>/…` contract, so the frontend is unchanged.
+
+- `api/{newsapi,guardian,nyt}/[endpoint].ts` are Node functions that mirror `default.conf.template`: same upstream rewrites, same allowlisted endpoints (404 otherwise), GET only (405 otherwise), key as `X-Api-Key` (NewsAPI) or `api-key` query param (Guardian, NYT). The shared logic lives in `api/_lib/proxy.ts`.
+- Upstream timeout is 12s (nginx `proxy_read_timeout`), answered with `504`. Successful responses get `Cache-Control: public, s-maxage=60, stale-while-revalidate=600`, so Vercel's edge cache plays the role of `proxy_cache` (non-200 answers are not cached).
+- `vercel.json` has the SPA fallback (everything except `/api/*` and `/assets/*` goes to `index.html`), `immutable` caching for `/assets/*`, `no-cache` for the rest, and the same security headers as `docker/nginx/security-headers.conf`. `connect-src 'self'` is enough because the browser only calls same-origin `/api/*`.
+- **Env vars** (Project Settings → Environment Variables, server-side only, no `VITE_` prefix): `NEWSAPI_KEY`, `GUARDIAN_KEY`, `NYT_KEY`. A missing key disables only that source, as with Docker.
+- **Not replicated: rate limiting.** nginx applies a per-IP `limit_req`; there is no equivalent on Vercel's free tier, so anyone can call `/api/*` as often as they like, limited only by the edge cache (identical queries within 60s hit upstream once) and the upstream free-tier quotas. Add Vercel's WAF rate limiting on a paid plan, or a limiter in front, if that matters.
+- Also different: no `proxy_cache_lock` (concurrent identical misses in different regions can each reach the upstream), no serve-stale-on-upstream-error, and no `/healthz`.
+- Local check: `vercel dev` with the same keys in `.env`.
+
 ## Unit tests
 
 - **Provider adapters**: mapping from fixture JSON (`__fixtures__/`), malformed-item handling and filter to query-param mapping, for all three providers.
