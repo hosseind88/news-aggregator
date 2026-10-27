@@ -94,7 +94,7 @@ NewsAPI's free plan rejects browser requests from any origin other than `localho
 /api/nyt/*       → https://api.nytimes.com/svc/search/v2/*         (key as api-key query param)
 ```
 
-- **Docker/prod:** nginx (`docker/nginx/default.conf.template`) does this. The file is an `envsubst` template, so keys are supplied at **container runtime** (`-e NEWSAPI_KEY=…`) — no rebuild needed and keys are never baked into the image or the JS bundle.
+- **Docker/prod:** nginx (`docker/nginx/default.conf.template`) does this. The file is an `envsubst` template, so keys are supplied at **container runtime** (`-e NEWSAPI_KEY=…`) — no rebuild needed and keys are never baked into the image (no `ENV` defaults, so no `SecretsUsedInArgOrEnv` build warning) or the JS bundle. `docker/nginx/05-default-keys.envsh` runs before the envsubst step and exports any missing key as empty, because envsubst skips unset variables and nginx would otherwise fail on a literal `${NYT_KEY}`.
 - **Local dev:** Vite's `server.proxy` (`vite.config.ts`) does the same, reading `.env`.
 
 The same approach is used for all three sources for consistency. Hardening in `docker/nginx/`:
