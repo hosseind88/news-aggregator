@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { TestRouter } from '@/test/TestRouter';
 import type { NewsService } from '@/domain/news';
 import { usePreferencesStore } from '@/features/preferences/preferencesStore';
 import { NewsServiceProvider } from '@/services/NewsServiceContext';
@@ -23,9 +23,9 @@ const setup = () => {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <NewsServiceProvider service={{ providers: [], search }}>
-        <MemoryRouter>
+        <TestRouter>
           <FeedPage />
-        </MemoryRouter>
+        </TestRouter>
       </NewsServiceProvider>
     </QueryClientProvider>,
   );

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { TestRouter } from '@/test/TestRouter';
 import { makeArticle } from '@/test/factories';
 import type { ArticlesQuery } from '../hooks/useArticles';
 import { ArticleResults } from './ArticleResults';
@@ -26,7 +26,7 @@ const renderResults = (
   props: { articles?: ReturnType<typeof makeArticle>[] } = {},
 ) =>
   render(
-    <MemoryRouter>
+    <TestRouter>
       <ArticleResults
         query={query}
         emptyTitle="Nothing"
@@ -34,20 +34,20 @@ const renderResults = (
         emptyAction={<button>Show all</button>}
         {...props}
       />
-    </MemoryRouter>,
+    </TestRouter>,
   );
 
 /** Re-renders the same tree with a newer query, as a loaded page would. */
 const renderPaged = (initial: ArticlesQuery) => {
   const ui = (query: ArticlesQuery) => (
-    <MemoryRouter>
+    <TestRouter>
       <ArticleResults
         query={query}
         articles={[]}
         emptyTitle="Nothing"
         stalledTitle="No recent matches"
       />
-    </MemoryRouter>
+    </TestRouter>
   );
   const view = render(ui(initial));
   return (query: ArticlesQuery) => view.rerender(ui(query));

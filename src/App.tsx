@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { lazy, useState } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { routerFuture } from '@/shared/lib/routerFuture';
 import { NotFoundPage } from '@/shared/layout/NotFoundPage';
 import { AppLayout } from '@/shared/layout/AppLayout';
 import { NewsServiceProvider } from '@/services/NewsServiceContext';
@@ -26,7 +27,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <NewsServiceProvider>
-        <BrowserRouter>
+        <BrowserRouter future={routerFuture}>
           <Routes>
             <Route element={<AppLayout />}>
               <Route index element={<FeedPage />} />

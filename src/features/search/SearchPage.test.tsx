@@ -2,7 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import { format } from 'date-fns';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { TestRouter } from '@/test/TestRouter';
 import type { NewsService } from '@/domain/news';
 import { NewsServiceProvider } from '@/services/NewsServiceContext';
 import { makeArticle } from '@/test/factories';
@@ -21,10 +22,10 @@ const setup = (initialUrl = '/search') => {
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
       <NewsServiceProvider service={service}>
-        <MemoryRouter initialEntries={[initialUrl]}>
+        <TestRouter initialEntries={[initialUrl]}>
           <SearchPage />
           <Location />
-        </MemoryRouter>
+        </TestRouter>
       </NewsServiceProvider>
     </QueryClientProvider>,
   );
@@ -120,9 +121,9 @@ describe('SearchPage', () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
         <NewsServiceProvider service={{ providers: [], search }}>
-          <MemoryRouter>
+          <TestRouter>
             <SearchPage />
-          </MemoryRouter>
+          </TestRouter>
         </NewsServiceProvider>
       </QueryClientProvider>,
     );

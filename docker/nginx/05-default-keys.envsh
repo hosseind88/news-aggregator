@@ -1,0 +1,8 @@
+#!/bin/sh
+# Sourced by the nginx entrypoint before 20-envsubst-on-templates.sh. envsubst only replaces
+# variables present in the environment, so a missing key would leave a literal ${NYT_KEY}
+# in the config and nginx would fail with "unknown variable". Default absent keys to empty:
+# the provider then answers with its own auth error instead of the container refusing to start.
+for key in NEWSAPI_KEY GUARDIAN_KEY NYT_KEY; do
+  eval "export $key=\"\${$key-}\""
+done
