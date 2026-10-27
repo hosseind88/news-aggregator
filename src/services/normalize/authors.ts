@@ -74,11 +74,7 @@ const cleanPerson = (part: string): string | undefined => {
   return name;
 };
 
-/**
- * Canonical author list from a raw byline: strips "By ", splits "A and B" / "A, B",
- * drops URLs, emails, organisations and `extraBlocklist` (e.g. the publisher's own name),
- * title-cases and de-duplicates (case-insensitive).
- */
+/** Canonical authors from a raw byline; `extraBlocklist` holds names to drop (the publisher's own). */
 export const normalizeAuthors = (
   raw: string | readonly string[] | null | undefined,
   extraBlocklist: readonly (string | null | undefined)[] = [],
@@ -98,13 +94,10 @@ export const normalizeAuthors = (
   return [...seen.values()];
 };
 
-/** Normalises a single user-typed author name; undefined when it is not a usable name. */
 export const normalizeAuthorName = (raw: string): string | undefined => normalizeAuthors(raw)[0];
 
-/** Comparison key for matching preferences against article authors. */
 export const authorKey = key;
 
-/** Case-insensitive match of an article's (normalised) authors against a list of followed names. */
 export const hasAnyAuthor = (articleAuthors: readonly string[], followed: readonly string[]) => {
   const keys = new Set(followed.map(key));
   return articleAuthors.some((name) => keys.has(key(name)));

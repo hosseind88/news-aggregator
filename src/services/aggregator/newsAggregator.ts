@@ -15,7 +15,6 @@ import { canonicalUrl, hasAnyAuthor, isWithinDateRange, titleKey } from '@/servi
 import { compareNewest, dedupeArticles } from './dedupe';
 
 export const ARTICLES_PER_PAGE = 24;
-/** Upper bound on upstream round-trips needed to fill one page. */
 const MAX_ROUNDS = 8;
 /**
  * With an author filter most fetched articles are discarded, so a page may not fill. Keep the
@@ -26,20 +25,16 @@ const MAX_ROUNDS_FILTERED = 3;
 const time = (article: Article) => Date.parse(article.publishedAt);
 
 /**
- * Fans a search out to the selected providers and merges them into one newest-first feed.
+ * Merges the selected providers into one newest-first feed.
  *
  * Pagination is a k-way merge over per-source cursors, not "page N of every source":
- * each source keeps its own page position plus a buffer of fetched-but-unshown articles.
- * An article is only emitted once no active source can still hold anything newer
- * (the "watermark"), so the feed is globally ordered across pages, and a source that runs
- * out of results (or hits its plan cap) is simply no longer called.
+ * an article is only emitted once no active source can still hold anything newer (the
+ * "watermark"), so the feed stays globally ordered across pages.
  *
- * Author filters are pushed to the sources that support them; everything fetched is still
- * matched client-side. A source that cannot filter by author is scanned at most one page per
- * call, so "find this author" never fans out into fetching that source's whole archive.
+ * A source that cannot filter by author is scanned at most one page per call, so "find this
+ * author" never fans out into fetching that source's whole archive.
  *
- * The cursor is immutable and JSON-serialisable: retrying a failed page re-runs from the
- * same cursor. Depends only on the `NewsProvider` abstraction; adapters are injected.
+ * The cursor is never mutated, so retrying a failed page re-runs from the same cursor.
  */
 export class NewsAggregator implements NewsService {
   constructor(private readonly registered: readonly NewsProvider[]) {}
@@ -143,7 +138,6 @@ export class NewsAggregator implements NewsService {
     return { articles: page, failures, nextCursor: hasRemaining ? state : undefined };
   }
 
-  /** Copies (or creates) the per-source state so the caller's cursor is never mutated. */
   private start(
     cursor: AggregatorCursor | undefined,
     sources: SourceId[] | undefined,
@@ -175,7 +169,6 @@ export class NewsAggregator implements NewsService {
     );
   }
 
-  /** Drops emitted articles (and their cross-source duplicates) from the buffers. */
   private consume(state: Record<string, SourceCursor>, emitted: Article[]) {
     const urls = new Set(emitted.map((a) => canonicalUrl(a.url)));
     const titles = new Set(emitted.map((a) => titleKey(a.title)));
@@ -186,7 +179,6 @@ export class NewsAggregator implements NewsService {
     }
   }
 
-  /** A provider with no overlap with the requested categories has nothing to offer. */
   private canServe(provider: NewsProvider, { categories }: SearchParams): boolean {
     if (!categories?.length) return true;
     return categories.some((category) => provider.supportedCategories.includes(category));

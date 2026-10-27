@@ -1,5 +1,3 @@
-/** Unified domain model. Every provider adapter maps its payload into these types. */
-
 export const SOURCE_IDS = ['newsapi', 'guardian', 'nyt'] as const;
 export type SourceId = (typeof SOURCE_IDS)[number];
 
@@ -23,9 +21,7 @@ export interface Article {
   imageUrl?: string;
   /** Canonical, title-cased person names; empty when the byline is missing or not a person. */
   authors: string[];
-  /** Which API the article came from. */
   source: SourceId;
-  /** Display name of that API's brand (always `SOURCE_LABELS[source]`). */
   sourceName: string;
   /** Underlying outlet when the API aggregates others (NewsAPI: "BBC News"); otherwise undefined. */
   publisher?: string;
@@ -53,14 +49,12 @@ export interface ProviderRequest extends SearchParams {
 
 export interface SourcePage {
   articles: Article[];
-  /** Whether the source can serve a further page for the same filters. */
   hasMore: boolean;
 }
 
 export interface NewsProvider {
   readonly id: SourceId;
   readonly name: string;
-  /** Categories this source can filter on; others are skipped by the aggregator. */
   readonly supportedCategories: readonly Category[];
   /** True when the API can narrow a search to bylines, so the author filter is pushed upstream. */
   readonly supportsAuthorFilter?: boolean;
@@ -73,10 +67,7 @@ export interface SourceFailure {
   message: string;
 }
 
-/**
- * Where one source is in a paginated search. `buffer` holds fetched articles not yet shown
- * (newest first). `failed` sources are not called again for the same search.
- */
+/** `buffer` holds fetched articles not yet shown (newest first). */
 export interface SourceCursor {
   page: number;
   buffer: Article[];
@@ -88,9 +79,7 @@ export type AggregatorCursor = Partial<Record<SourceId, SourceCursor>>;
 
 export interface AggregatedResult {
   articles: Article[];
-  /** Sources that failed while producing this page. */
   failures: SourceFailure[];
-  /** Undefined once every source is exhausted. */
   nextCursor?: AggregatorCursor;
 }
 
