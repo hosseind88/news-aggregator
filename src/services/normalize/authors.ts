@@ -4,60 +4,27 @@ import { cleanText } from './text';
 const NOT_A_PERSON = new Set([
   'ap',
   'afp',
-  'pa',
-  'pa media',
   'reuters',
-  'bloomberg',
   'associated press',
   'the associated press',
-  'press association',
   'the new york times',
-  'new york times',
-  'nyt',
-  'the guardian',
-  'guardian',
-  'bbc',
-  'bbc news',
-  'cnn',
   'unknown',
-  'admin',
-  'anonymous',
   'n/a',
-  'none',
-  'null',
 ]);
 
 const GENERIC_ROLE = /(^|\s)(staff|agencies|agency|editorial|editors?|desk|newsroom|team)(\s|$)/i;
-const LOWERCASE_PARTICLES = new Set([
-  'de',
-  'del',
-  'della',
-  'di',
-  'da',
-  'van',
-  'von',
-  'der',
-  'la',
-  'le',
-  'bin',
-]);
-
 const key = (name: string) => collapse(name).toLowerCase();
 const collapse = (value: string) => value.replace(/\s+/g, ' ').trim();
-
-const capitalise = (word: string) =>
-  word
-    .toLowerCase()
-    .replace(/(^|[-'’])(\p{L})/gu, (_, sep: string, letter: string) => sep + letter.toUpperCase());
 
 /** "JANE DOE" / "jane doe" -> "Jane Doe"; words with intentional inner caps ("McDonald") are kept. */
 const toTitleCase = (name: string): string =>
   name
     .split(' ')
-    .map((word, index) => {
-      if (index > 0 && LOWERCASE_PARTICLES.has(word.toLowerCase())) return word.toLowerCase();
-      return word === word.toLowerCase() || word === word.toUpperCase() ? capitalise(word) : word;
-    })
+    .map((word) =>
+      word === word.toLowerCase() || word === word.toUpperCase()
+        ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        : word,
+    )
     .join(' ');
 
 const cleanPerson = (part: string): string | undefined => {

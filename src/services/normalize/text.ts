@@ -5,13 +5,6 @@ const NAMED_ENTITIES: Record<string, string> = {
   quot: '"',
   apos: "'",
   nbsp: ' ',
-  ndash: '–',
-  mdash: '—',
-  hellip: '…',
-  lsquo: '‘',
-  rsquo: '’',
-  ldquo: '“',
-  rdquo: '”',
 };
 
 export const DESCRIPTION_MAX_LENGTH = 240;

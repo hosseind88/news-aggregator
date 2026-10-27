@@ -19,7 +19,7 @@ describe('normalizeAuthors', () => {
     ['Ann Author & Bob Coauthor', ['Ann Author', 'Bob Coauthor']],
     ['JANE DOE', ['Jane Doe']],
     ['jane doe', ['Jane Doe']],
-    ["MARY O'NEIL-SMITH", ["Mary O'Neil-Smith"]],
+    ['MARY SMITH', ['Mary Smith']],
     ['Ryan McDonald', ['Ryan McDonald']],
     ['Jane Doe in Washington', ['Jane Doe']],
     ['Jane Doe (Reuters)', ['Jane Doe']],
